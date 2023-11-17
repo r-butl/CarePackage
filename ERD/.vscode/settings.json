@@ -1,0 +1,6 @@
+{
+
+	"latex-workshop.latex.autoBuild.run": "onFileChange" ,
+	"latex-wordkshop.latex.autoBuild.runInterval":500
+
+}
