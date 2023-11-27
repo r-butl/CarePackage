@@ -235,7 +235,7 @@ There are numerous constraints placed upon this project. Time constraints are a 
 
 Abiding to all the regulations specified by the FDA and HIPAA will also be a challenge due to the shear quantity and limited time to get familiar; this project will focus on the decryption of AES-256, but leave the data storage regulations for later. Due to the lack of developed infrastructure, emulation techniques must be utilized for testing, including creation of artificial signals and network packets. The compute power of the work station used in the project (my laptop) will provide limitations to how fast the processing can be executed. 
 \subsection{\gls{assumptions}}
-Signal characteristics of ECG are as follows: 0.05-100 Hz, input voltage of 0.5-5.0 mV from the electrode. Various forms of noise such as electrode contact (0-20 Hz), various bodily signals (0.13-3 Hz), and motion artifacts (0-20 Hz) will be present in the signal \cite{ecgfiltering}. Power line noise in the range of 50-60 Hz can be neglected due to battery operation. Using the Nyquist theorem as a baseline, the signal will be sampled at 500 Hz to put us far above 200 Hz, produced by the equation $S = 2 * f$. The data type used to store samples will be a 16-bit integer. HIPAA imposes strict regulations on Personal Health Information and suggests using 256-bit AES as the standard encryption protocol \cite{sprinto}. The network packets that are received will be in the Zigbee format. In regards to heart rate peak detection, the Pan Tompkins algorithm is the most widely used algorithm \cite{pantompkins} and will be used in this implementation.
+Signal characteristics of ECG are as follows: 0.05-100 Hz, input voltage of 0.5-5.0 mV from the electrode. Various forms of noise such as electrode contact (0-20 Hz), various bodily signals (0.13-3 Hz), and motion artifacts (0-20 Hz) will be present in the signal \cite{ecgfiltering}. Power line noise in the range of 50-60 Hz can be neglected due to battery operation. Using the Nyquist theorem as a baseline, the signal will be sampled at 500 Hz to put us far above 200 Hz, produced by the equation $S = 2 * f$. The data type used to store samples will be a 16-bit integer. HIPAA imposes strict regulations on Personal Health Information and suggests using 256-bit AES as the standard encryption protocol \cite{sprinto}. The network packets that are received will be in the Zigbee format. In regards to heart rate peak detection, the Pan Tompkins algorithm is the most widely used algorithm \cite{pantompkins} and will be used in this implementation. The projects execution is dependant upon all items listed in the bill of materials. The integration of the pipeline is dependant upon all individual algorithm implementations. The whole system is dependant upon the development of our testing engine. Each algorithm is dependant upon the size of the input array and hyperparameters used to tune each algorithm.
 
 \newpage
 \subsection{\gls{arch}}
@@ -296,7 +296,7 @@ There are various algorithms and filtering techniques capable of signal filtrati
         15 & Storage Capacity & 1TB or higher \\
         \hline
     \end{tabular}
-    \caption{Customer Requirements}
+    \caption{Project Specifications}
 \end{table}
 
 \newpage
