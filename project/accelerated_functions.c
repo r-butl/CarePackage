@@ -14,12 +14,19 @@ int get_length(int *a){
 
 int* wavelet(int* input)
 {
+
 	return NULL;
 
 }
 
 int* median(int* input)
 {
+        int window = 3;
+        int* output[get_length(input) - window + 1];
 
+        for(int i = 1; i < get_length(input) - window; i++){
+                
+                output[i - 1] = 
+        }
 	return NULL;
 }
