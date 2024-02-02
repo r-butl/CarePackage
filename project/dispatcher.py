@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 import wfdb
 import multiprocessing as mp
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+import os
+import json
 
 class data_dispatcher:
 
@@ -22,6 +27,7 @@ class data_dispatcher:
         with open(path+self.database_file, 'r') as file: 
             self.total_lines = sum(1 for line in file)
         
+        # Parameters for signal loading and optimizing speed
         if sampling_rate != 100:
             self.sampling_rate = 500
         else:
@@ -29,6 +35,14 @@ class data_dispatcher:
         self.batch_size = batch_size
         self.max_index = int(np.ceil(self.total_lines / self.batch_size)) - 1 # Store the maximum index
         self.path = path
+
+        #   Create the encryption unit
+        block_size = 16
+        self.key = os.urandom(32)   # 256-bit key
+        self.iv = os.urandom(block_size)    # AES block size is 16 bytes
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv), backend=default_backend())
+        self.encryptor = cipher.encryptor()
+        self.padder = padding.PKCS7(block_size*8).padder()
 
     def reset(self):
         self.current_index
@@ -70,7 +84,15 @@ class data_dispatcher:
         else:
             data = wfdb.rdsamp(self.path+record["filename_hr"])
 
-        print(data[0])
+        # Construct the data packet
+            
+        # Serialize the data
+        serialized_data = json.dumps(data[0].tolist()).encode('utf-8')
+        # Pad the data before sending
+        serialized_data = self.padder.update(serialized_data) + self.padder.finalize()
+        # Data is encrypted in blocks, any remaining data is finished and added
+        serialized_data = self.encryptor.update(serialized_data) + self.encryptor.finalize()   
+
 
     def send_signal(self):
         """Sends a """
