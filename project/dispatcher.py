@@ -10,11 +10,15 @@ import json
 
 class data_dispatcher:
 
+    # Signal Loading parameters
     batch_size = 1000        # Size of each signal batch
     max_index = 0           # Total number of batches
     current_index = 0       # Current batch index
     total_lines = 0
     sampling_rate = 100
+
+    # Encryption Parameters
+    block_size = 16
 
     # Important files for operation
     database_file = "ptbxl_database.csv"
@@ -37,12 +41,11 @@ class data_dispatcher:
         self.path = path
 
         #   Create the encryption unit
-        block_size = 16
         self.key = os.urandom(32)   # 256-bit key
-        self.iv = os.urandom(block_size)    # AES block size is 16 bytes
+        self.iv = os.urandom(self.block_size)    # AES block size is 16 bytes
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv), backend=default_backend())
         self.encryptor = cipher.encryptor()
-        self.padder = padding.PKCS7(block_size*8).padder()
+        self.padder = padding.PKCS7(self.block_size*8).padder()
 
     def reset(self):
         self.current_index
@@ -72,7 +75,7 @@ class data_dispatcher:
         else:   # Load queue has plenty of records
             return
 
-    def prep_to_send(self):
+    def prep_signals_to_send(self):
         """Loads up signal from a file, preps it to be sent, pushes to Q_ready_to_send"""
 
         record = self.Q_signals_to_load.get()
@@ -85,21 +88,28 @@ class data_dispatcher:
             data = wfdb.rdsamp(self.path+record["filename_hr"])
 
         # Construct the data packet
+        data_to_encrypt = data[0].tolist()
             
-        # Serialize the data
-        serialized_data = json.dumps(data[0].tolist()).encode('utf-8')
+
+        # Serialize the data and Encrypt
+        serialized_data = json.dumps(data_to_encrypt).encode('utf-8')
         # Pad the data before sending
         serialized_data = self.padder.update(serialized_data) + self.padder.finalize()
         # Data is encrypted in blocks, any remaining data is finished and added
         serialized_data = self.encryptor.update(serialized_data) + self.encryptor.finalize()   
 
+        self.Q_ready_to_send.put(serialized_data)
 
     def send_signal(self):
-        """Sends a """
-        pass
+        """Pops a packet off of Q_ready_to_send and sends it"""
+
+        packet = self.Q_ready_to_send.get()
+
+        print(packet)
 
     def run(self):
         self.queue_signals_to_process()
-        self.prep_to_send()
+        self.prep_signals_to_send()
+        self.send_signal()
 
 
