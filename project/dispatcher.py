@@ -1,26 +1,9 @@
 import pandas as pd
 import numpy as np
 import wfdb
-import ast
-import time
 import multiprocessing as mp
 
-def views_signal(signal):
-    # Signal, Timestep, value for each of the 12 leads
-    sig = [signal[0][i][0] for i in range(len(X[0]))]
-    print(len(sig))
-
-
-    from scipy.fft import fft, ifft
-    fft_sig = fft(sig)
-
-    import matplotlib.pyplot as plt
-    plt.plot(sig)
-    plt.xlabel("Time (milliseconds)")
-    plt.ylabel("Voltage (millivolts)")
-    plt.show()
-
-class data_dispatch:
+class data_dispatcher:
 
     batch_size = 1000        # Size of each signal batch
     max_index = 0           # Total number of batches
@@ -34,11 +17,16 @@ class data_dispatch:
     Q_signals_to_load = mp.Queue()
     Q_ready_to_send = mp.Queue()
 
-    def __init__(self, path):
+    def __init__(self, path, batch_size=100, sampling_rate=100):
         """Reads the records database and calculates the number of batches used in the engine"""
         with open(path+self.database_file, 'r') as file: 
             self.total_lines = sum(1 for line in file)
         
+        if sampling_rate != 100:
+            self.sampling_rate = 500
+        else:
+            self.sampling_rate = 100
+        self.batch_size = batch_size
         self.max_index = int(np.ceil(self.total_lines / self.batch_size)) - 1 # Store the maximum index
         self.path = path
 
@@ -74,43 +62,22 @@ class data_dispatch:
         """Loads up signal from a file, preps it to be sent, pushes to Q_ready_to_send"""
 
         record = self.Q_signals_to_load.get()
-        print("\n\n" ,record)
-        def load_raw_data(df, sampling_rate, path):
-            if sampling_rate == 100:
-                data = [wfdb.rdsamp(path+f) for f in df.filename_lr]
-            else:
-                data = [wfdb.rdsamp(path+f) for f in df.filename_hr]
-            data = np.array([signal for signal, meta in data])
-            return data
-            
-            #signals = load_raw_data(records, self.sampling_rate, self.path)
-            #eturn signals
+        #print("\n\n" ,record)
+
+        # Load in the raw signal
+        if self.sampling_rate == 100:
+            data = wfdb.rdsamp(self.path+record["filename_lr"])
+        else:
+            data = wfdb.rdsamp(self.path+record["filename_hr"])
+
+        print(data[0])
+
+    def send_signal(self):
+        """Sends a """
+        pass
+
+    def run(self):
+        self.queue_signals_to_process()
+        self.prep_to_send()
 
 
-def time_dispatch(num_elements, dispatcher):
-    import time
-    start_time = time.time()
-    for _ in range(num_elements):
-        dispatcher.queue_signals_to_process()
-        dispatcher.prep_to_send()
-
-    elasped_time = time.time() - start_time
-    print(f"---- {num_elements} signals in {elasped_time} seconds ----")
-    dispatcher.reset()
-    return elasped_time
-
-if __name__ == "__main__":
-    path = '/home/lucas/Desktop/Senior_project/data/'
-    dispatcher = data_dispatch(path)
-
-    times = list()
-    test_count = 30
-    for _ in range(test_count):
-        times.append(time_dispatch(10000, dispatcher))
-
-    from matplotlib import pyplot as plt
-    plt.scatter([i for i in range(test_count)], times)
-    plt.title("Batch Size: 1000")
-    plt.xlabel("Trials")
-    plt.ylabel("Time (seconds)")
-    plt.show()
