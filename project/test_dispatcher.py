@@ -1,4 +1,7 @@
 from dispatcher import data_dispatcher
+import time
+from matplotlib import pyplot as plt
+import random
 
 def view_signal(signal):
     # Signal, Timestep, value for each of the 12 leads
@@ -14,39 +17,81 @@ def view_signal(signal):
     plt.ylabel("Voltage (millivolts)")
     plt.show()
 
-def time_dispatch(num_elements, dispatcher):
-    import time
-    start_time = time.time()
-    for _ in range(num_elements):
-        dispatcher.queue_signals_to_process()
-        dispatcher.prep_to_send()
-
-    elasped_time = time.time() - start_time
-    print(f"---- {num_elements} signals in {elasped_time} seconds ----")
-    dispatcher.reset()
-    return elasped_time
+def generate_unique_colors(n):
+    """Generate n unique random colors."""
+    colors = set()
+    while len(colors) < n:
+        colors.add((random.random(), random.random(), random.random()))
+    return list(colors)
 
 if __name__ == "__main__":
 
     path = '/home/lucas/Desktop/Senior_project/data/'
-    data_dispatch = data_dispatcher(path,
-                                    batch_size=100,
-                                    sampling_rate=100)
+    data_dispatch = data_dispatcher(    path=path,
+                                        batch_size=100,
+                                        sampling_rate=100)
 
-    run_test = False
+    run_test = True
+
     if run_test == True:
-        times = list()
-        batch_sizes = [100,300, 500, 700, 1000]
+
+        # Generate Test Information
+        batch_sizes = [(i * 200)for i in range(1,8)]
+        print(batch_sizes)
         test_count = 10
+        times = [0] * test_count
+        colors = generate_unique_colors(len(batch_sizes))
 
-        for _ in range(test_count):
-            times.append(time_dispatch(10000, data_dispatch))
+        for n in range(len(batch_sizes)):
 
-        from matplotlib import pyplot as plt
-        plt.scatter([i for i in range(test_count)], times)
-        plt.title("Batch Size: 1000")
+            # Update Batchsize
+            data_dispatch.batch_size = batch_sizes[n]
+            data_dispatch.reset()
+
+            print("\n==============================")
+            print(f"New Batchsize {batch_sizes[n]}")
+
+            for i in range(test_count):
+                # Run one test
+
+                def time_dispatch(num_elements, dispatcher):
+                    
+                    start_time = time.time()
+                    previous_time = start_time
+                    dispatcher.reset()
+
+                    for _ in range(num_elements):
+                        
+                        dispatcher.test_run()
+                        #print(f"{f} time: {round(time.time() - previous_time, 7)}")
+                        previous_time = time.time()
+                        
+                        #print()
+                
+                    elasped_time = time.time() - start_time
+                
+                    print(f"---- {num_elements} signals in {round(elasped_time, 2)} seconds ----")
+                
+                    return elasped_time
+                
+                times[i] = time_dispatch(   num_elements=100, 
+                                            dispatcher=data_dispatch)
+                
+            print(times)
+
+            plt.scatter(x=[i for i in range(test_count)], 
+                        y=times, 
+                        label=batch_sizes[n],
+                        color=colors[n])
+            
+        print("Finished")
+        
+        #   Plot
+        plt.ylim([0,1])
+        plt.title(f"Speed per Batch Size")
         plt.xlabel("Trials")
         plt.ylabel("Time (seconds)")
+        plt.legend()
         plt.show()
-
-    data_dispatch.run()
+    else:
+        data_dispatch.test_run()

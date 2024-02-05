@@ -14,10 +14,12 @@ class data_dispatcher:
 
     # Signal Loading parameters
     batch_size = 1000        # Size of each signal batch
+    sampling_rate = 100
+
+    # 
     max_index = 0           # Total number of batches
     current_index = 0       # Current batch index
     total_lines = 0
-    sampling_rate = 100
     signal_id = 0
 
     # Encryption Parameters
@@ -26,6 +28,7 @@ class data_dispatcher:
     # Important files for operation
     database_file = "ptbxl_database.csv"
 
+    # Queues for stages
     Q_signals_to_load = mp.Queue()
     Q_ready_to_send = mp.Queue()
 
@@ -34,11 +37,12 @@ class data_dispatcher:
         with open(path+self.database_file, 'r') as file: 
             self.total_lines = sum(1 for line in file)
         
-        # Parameters for signal loading and optimizing speed
+        # 
         if sampling_rate != 100:
             self.sampling_rate = 500
         else:
             self.sampling_rate = 100
+
         self.batch_size = batch_size
         self.max_index = int(np.ceil(self.total_lines / self.batch_size)) - 1 # Store the maximum index
         self.path = path
@@ -46,9 +50,8 @@ class data_dispatcher:
         #   Create the encryption unit
         self.key = os.urandom(32)   # 256-bit key
         self.iv = os.urandom(self.block_size)    # AES block size is 16 bytes
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv), backend=default_backend())
-        self.encryptor = cipher.encryptor()
-        self.padder = padding.PKCS7(self.block_size*8).padder()
+        self.cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv), backend=default_backend())
+        self.padder = padding.PKCS7(self.block_size*8)
 
     def reset(self):
         '''Resets the signal sending statemachine'''
@@ -72,10 +75,9 @@ class data_dispatcher:
                 self.current_index += 1
             else:
                 print("End of database reached, resetting index...")
-                self.current_index = 0
-
+                self.reset()
+                
             # Reads a batch of signal meta data and pushes it to the queue
-            print(f"___________________________________________\nCurrent index: {self.current_index}, Max Index: {self.max_index},  \nCurrent line:  {self.current_index * self.batch_size} Total Lines: {self.total_lines}")
             records = pd.read_csv(self.path+self.database_file, index_col='ecg_id', skiprows=range(1, self.current_index*self.batch_size), nrows=self.batch_size)
             records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
 
@@ -107,10 +109,14 @@ class data_dispatcher:
 
         # Serialize the data and Encrypt
         serialized_data = json.dumps(data_packet).encode('utf-8')
-        # Pad the data before sending
-        serialized_data = self.padder.update(serialized_data) + self.padder.finalize()
-        # Data is encrypted in blocks, any remaining data is finished and added
-        serialized_data = self.encryptor.update(serialized_data) + self.encryptor.finalize()   
+
+        # Pad the data
+        padder = self.padder.padder()   # Must create a new context for each usage of the padder and encryptor
+        serialized_data = padder.update(serialized_data) + padder.finalize()
+
+        # Encrypt the data
+        encryptor = self.cipher.encryptor()
+        serialized_data = encryptor.update(serialized_data) + encryptor.finalize()   
 
         self.Q_ready_to_send.put(serialized_data)
 
@@ -119,11 +125,8 @@ class data_dispatcher:
 
         packet = self.Q_ready_to_send.get()
 
-        print(packet)
-
-    def run(self):
+        return packet
+    
+    def test_run(self):
         self.read_meta_data()
         self.package_and_encrypt()
-        self.send_package()
-
-
