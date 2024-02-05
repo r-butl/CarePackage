@@ -7,6 +7,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 import os
 import json
+import time
+import ast
 
 class data_dispatcher:
 
@@ -16,6 +18,7 @@ class data_dispatcher:
     current_index = 0       # Current batch index
     total_lines = 0
     sampling_rate = 100
+    signal_id = 0
 
     # Encryption Parameters
     block_size = 16
@@ -48,15 +51,21 @@ class data_dispatcher:
         self.padder = padding.PKCS7(self.block_size*8).padder()
 
     def reset(self):
+        '''Resets the signal sending statemachine'''
         self.current_index
         self.Q_ready_to_send = mp.Queue()
         self.Q_ready_to_send = mp.Queue()
+        self.signal_id = 0
     
-    def queue_signals_to_process(self):
+    def generate_id(self):
+        self.signal_id += 1
+        return str(self.signal_id).zfill(7)
+    
+    def read_meta_data(self):
         """Reads a batch size of meta information and returns a dataframe of it"""
 
         # Check the length of the queue
-        if self.Q_signals_to_load.qsize() < int(self.batch_size * 0.5):
+        if self.Q_signals_to_load.qsize() < int(self.batch_size * 0.1):
 
             # For reusing the database signals continuous, will reset when the end of the database is reached
             if self.current_index < self.max_index:
@@ -68,14 +77,15 @@ class data_dispatcher:
             # Reads a batch of signal meta data and pushes it to the queue
             print(f"___________________________________________\nCurrent index: {self.current_index}, Max Index: {self.max_index},  \nCurrent line:  {self.current_index * self.batch_size} Total Lines: {self.total_lines}")
             records = pd.read_csv(self.path+self.database_file, index_col='ecg_id', skiprows=range(1, self.current_index*self.batch_size), nrows=self.batch_size)
-            #records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
+            records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
 
             for _, row in records.iterrows():
                 self.Q_signals_to_load.put(row.to_dict())
+
         else:   # Load queue has plenty of records
             return
 
-    def prep_signals_to_send(self):
+    def package_and_encrypt(self):
         """Loads up signal from a file, preps it to be sent, pushes to Q_ready_to_send"""
 
         record = self.Q_signals_to_load.get()
@@ -88,11 +98,15 @@ class data_dispatcher:
             data = wfdb.rdsamp(self.path+record["filename_hr"])
 
         # Construct the data packet
-        data_to_encrypt = data[0].tolist()
-            
+        data_packet = {
+            'time_stamp'    :time.time(),
+            'id'            :self.generate_id(),
+            'sample_rate'   :self.sampling_rate,
+            'signal_data'   :data[0].tolist()
+        }
 
         # Serialize the data and Encrypt
-        serialized_data = json.dumps(data_to_encrypt).encode('utf-8')
+        serialized_data = json.dumps(data_packet).encode('utf-8')
         # Pad the data before sending
         serialized_data = self.padder.update(serialized_data) + self.padder.finalize()
         # Data is encrypted in blocks, any remaining data is finished and added
@@ -100,7 +114,7 @@ class data_dispatcher:
 
         self.Q_ready_to_send.put(serialized_data)
 
-    def send_signal(self):
+    def send_package(self):
         """Pops a packet off of Q_ready_to_send and sends it"""
 
         packet = self.Q_ready_to_send.get()
@@ -108,8 +122,8 @@ class data_dispatcher:
         print(packet)
 
     def run(self):
-        self.queue_signals_to_process()
-        self.prep_signals_to_send()
-        self.send_signal()
+        self.read_meta_data()
+        self.package_and_encrypt()
+        self.send_package()
 
 
