@@ -26,7 +26,7 @@ def generate_unique_colors(n):
 
 if __name__ == "__main__":
 
-    path = '/home/lucas/Desktop/Senior_project/data/'
+    path = '/home/lucas/Desktop/programming/Senior_project/data/'
     data_dispatch = data_dispatcher(    path=path,
                                         batch_size=100,
                                         sampling_rate=100)

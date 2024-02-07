@@ -47,6 +47,16 @@ class data_dispatcher:
         self.max_index = int(np.ceil(self.total_lines / self.batch_size)) - 1 # Store the maximum index
         self.path = path
 
+        
+            # Reads a batch of signal meta data and pushes it to the queue
+        records = pd.read_csv(self.path+self.database_file, index_col='ecg_id')
+        records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
+
+        for _, row in records.iterrows():
+            self.Q_signals_to_load.put(row.to_dict())
+
+
+
         #   Create the encryption unit
         self.key = os.urandom(32)   # 256-bit key
         self.iv = os.urandom(self.block_size)    # AES block size is 16 bytes
@@ -128,5 +138,5 @@ class data_dispatcher:
         return packet
     
     def test_run(self):
-        self.read_meta_data()
+        #self.read_meta_data()
         self.package_and_encrypt()
