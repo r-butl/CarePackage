@@ -13,13 +13,12 @@ import ast
 class data_dispatcher:
 
     # Signal Loading parameters
-    batch_size = 1000        # Size of each signal batch
     sampling_rate = 100
 
-    # 
+    # Meta data state machine information
+    signal_meta_data = []
     max_index = 0           # Total number of batches
     current_index = 0       # Current batch index
-    total_lines = 0
     signal_id = 0
 
     # Encryption Parameters
@@ -33,29 +32,17 @@ class data_dispatcher:
     Q_ready_to_send = mp.Queue()
 
     def __init__(self, path, batch_size=100, sampling_rate=100):
-        """Reads the records database and calculates the number of batches used in the engine"""
+        """Reads signal meta data, sets up encryption and queues"""
+        self.path = path
+
         with open(path+self.database_file, 'r') as file: 
             self.total_lines = sum(1 for line in file)
         
-        # 
+        # Set the sampling rate to determine which signal to load
         if sampling_rate != 100:
             self.sampling_rate = 500
         else:
             self.sampling_rate = 100
-
-        self.batch_size = batch_size
-        self.max_index = int(np.ceil(self.total_lines / self.batch_size)) - 1 # Store the maximum index
-        self.path = path
-
-        
-            # Reads a batch of signal meta data and pushes it to the queue
-        records = pd.read_csv(self.path+self.database_file, index_col='ecg_id')
-        records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
-
-        for _, row in records.iterrows():
-            self.Q_signals_to_load.put(row.to_dict())
-
-
 
         #   Create the encryption unit
         self.key = os.urandom(32)   # 256-bit key
@@ -63,45 +50,32 @@ class data_dispatcher:
         self.cipher = Cipher(algorithms.AES(self.key), modes.CBC(self.iv), backend=default_backend())
         self.padder = padding.PKCS7(self.block_size*8)
 
+        # Load up initial meta data
+        print("Loading up signal meta data...")
+        records = pd.read_csv(self.path+self.database_file, index_col='ecg_id')
+        records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
+
+        for _, row in records.iterrows():
+            self.signal_meta_data.append(row.to_dict())
+        
+        self.max_index = len(self.signal_meta_data)
+
     def reset(self):
         '''Resets the signal sending statemachine'''
-        self.current_index
-        self.Q_ready_to_send = mp.Queue()
-        self.Q_ready_to_send = mp.Queue()
+        self.current_index = 0 
         self.signal_id = 0
     
     def generate_id(self):
+        """Generates a unique ID for the signal being sent"""
         self.signal_id += 1
         return str(self.signal_id).zfill(7)
-    
-    def read_meta_data(self):
-        """Reads a batch size of meta information and returns a dataframe of it"""
-
-        # Check the length of the queue
-        if self.Q_signals_to_load.qsize() < int(self.batch_size * 0.1):
-
-            # For reusing the database signals continuous, will reset when the end of the database is reached
-            if self.current_index < self.max_index:
-                self.current_index += 1
-            else:
-                print("End of database reached, resetting index...")
-                self.reset()
-                
-            # Reads a batch of signal meta data and pushes it to the queue
-            records = pd.read_csv(self.path+self.database_file, index_col='ecg_id', skiprows=range(1, self.current_index*self.batch_size), nrows=self.batch_size)
-            records.scp_codes = records.scp_codes.apply(lambda x: ast.literal_eval(x)) # Not sure what this does, found it in the example
-
-            for _, row in records.iterrows():
-                self.Q_signals_to_load.put(row.to_dict())
-
-        else:   # Load queue has plenty of records
-            return
 
     def package_and_encrypt(self):
         """Loads up signal from a file, preps it to be sent, pushes to Q_ready_to_send"""
 
-        record = self.Q_signals_to_load.get()
-        #print("\n\n" ,record)
+        # Grab a signal from the list
+        record = self.signal_meta_data[self.current_index]
+        self.current_index = self.current_index+1
 
         # Load in the raw signal
         if self.sampling_rate == 100:
