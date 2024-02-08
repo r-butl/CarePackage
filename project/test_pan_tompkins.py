@@ -2,6 +2,7 @@ import ctypes
 import numpy as np
 import wfdb
 import pandas as pd
+import dispatcher as d
 
 # Initiate Accelerator Functions
 class accelerator:
@@ -16,14 +17,13 @@ class accelerator:
     
     def wavelet(self, input):
         return None
+    
 
-def load_raw_data(df, sampling_rate, path):
-    if sampling_rate == 100:
-        data = [wfdb.rdsamp(path+f) for f in df.filename_lr]
-    else:
-        data = [wfdb.rdsamp(path+f) for f in df.filename_hr]
-    data = np.array([signal for signal, meta in data])
-    return data
+if __name__ == "__main__":
 
-path = '/home/lucas/Desktop/Senior_project/data/'
-Y = pd.read_csv(path+'ptbxl_database.csv', index_col='ecg_id')
+    data_source = d.data_dispatcher(path="/home/lucas/Desktop/programming/Senior_project/project/data/",
+                                    sampling_rate=100)
+
+    signal = [i[0] for i in data_source.give_one_signal()[0].tolist()]
+
+    print(signal)
