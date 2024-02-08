@@ -28,7 +28,6 @@ if __name__ == "__main__":
 
     path = '/home/lucas/Desktop/programming/Senior_project/project/data/'
     data_dispatch = data_dispatcher(    path=path,
-                                        batch_size=100,
                                         sampling_rate=100)
 
     run_test = True
@@ -45,7 +44,6 @@ if __name__ == "__main__":
         for n in range(len(batch_sizes)):
 
             # Update Batchsize
-            data_dispatch.batch_size = batch_sizes[n]
             data_dispatch.reset()
 
             print("\n==============================")

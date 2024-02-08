@@ -31,7 +31,7 @@ class data_dispatcher:
     Q_signals_to_load = mp.Queue()
     Q_ready_to_send = mp.Queue()
 
-    def __init__(self, path, batch_size=100, sampling_rate=100):
+    def __init__(self, path, sampling_rate=100):
         """Reads signal meta data, sets up encryption and queues"""
         self.path = path
 
@@ -70,9 +70,7 @@ class data_dispatcher:
         self.signal_id += 1
         return str(self.signal_id).zfill(7)
 
-    def package_and_encrypt(self):
-        """Loads up signal from a file, preps it to be sent, pushes to Q_ready_to_send"""
-
+    def give_one_signal(self):
         # Grab a signal from the list
         record = self.signal_meta_data[self.current_index]
         self.current_index = self.current_index+1
@@ -82,6 +80,14 @@ class data_dispatcher:
             data = wfdb.rdsamp(self.path+record["filename_lr"])
         else:
             data = wfdb.rdsamp(self.path+record["filename_hr"])
+
+        print(data)
+        return data
+
+    def prepare_signal(self):
+        """Loads up signal from a file, preps it to be sent, pushes to Q_ready_to_send"""
+
+        data = self.give_one_signal()
 
         # Construct the data packet
         data_packet = {
@@ -112,5 +118,5 @@ class data_dispatcher:
         return packet
     
     def test_run(self):
-        self.package_and_encrypt()
+        self.prepare_signal()
         
