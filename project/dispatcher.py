@@ -104,7 +104,7 @@ class data_dispatcher:
 
         self.Q_ready_to_send.put(serialized_data)
 
-    def send_package(self):
+    def connect_and_send(self):
         """Pops a packet off of Q_ready_to_send and sends it"""
 
         packet = self.Q_ready_to_send.get()
@@ -112,5 +112,5 @@ class data_dispatcher:
         return packet
     
     def test_run(self):
-        #self.read_meta_data()
         self.package_and_encrypt()
+        
