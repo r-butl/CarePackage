@@ -38,13 +38,13 @@ def give_coefs():
     # https://www.allaboutcircuits.com/technical-articles/design-examples-of-fir-filters-using-window-method/
     sample_freq = 500      # hz
 
-    band_pass = True
+    band_pass = False
     lower_pass_band = convert_to_digital(0, sample_freq)         # hz
     lower_stop_band = convert_to_digital(10, sample_freq)         # hx
     lower_corner = (lower_stop_band + lower_pass_band) / 2
 
-    upper_pass_band = convert_to_digital(10, sample_freq)         # hz
-    upper_stop_band = convert_to_digital(20, sample_freq)         # hx
+    upper_pass_band = convert_to_digital(100, sample_freq)         # hz
+    upper_stop_band = convert_to_digital(150, sample_freq)         # hx
     upper_corner = (upper_stop_band + upper_pass_band) / 2
 
     delta_2 = attentuation(.7)    # Stop band reduction
@@ -55,7 +55,7 @@ def give_coefs():
     if delta_2 > -21:   # rectangular
         mainloab_coef = 4 * math.pi
     elif delta_2 > -44: # hanning
-        mainloab_ceof = 8 * math.pi
+        mainloab_coef = 8 * math.pi
     elif delta_2 > -53: # hamming
         mainloab_coef = 8 * math.pi
     elif delta_2 > -74: # blackman
@@ -103,9 +103,9 @@ if __name__ == "__main__":
     signal = give_one_signal()
     coefs = give_coefs()
 
-    coefs_file = "FIR_coefs_bandpass_5_15.csv"
+    coefs_file = "FIR_coefs_bandpass_40.csv"
     print(coefs)
-    dump_coefs(file_name=coefs_file, coefs=[np.float16(i) for i in coefs])
+    dump_coefs(file_name=coefs_file, coefs=coefs)
 
     #   This and down creates the plot
     convolved = np.convolve(signal, coefs)

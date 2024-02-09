@@ -1,2 +1,2 @@
-comp: accelerated_functions.c
-	gcc -shared -o acc_func.so accelerated_functions.c
+pan_tompkins.so: pan_tompkins.c
+	gcc -shared -o pan_tompkins.so pan_tompkins.c -fPIC

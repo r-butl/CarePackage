@@ -81,7 +81,6 @@ class data_dispatcher:
         else:
             data = wfdb.rdsamp(self.path+record["filename_hr"])
 
-        print(data)
         return data
 
     def prepare_signal(self):
