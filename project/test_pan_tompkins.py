@@ -32,10 +32,11 @@ def cast_to_ctypes(data_list):
 if __name__ == "__main__":
 
     data_source = d.data_dispatcher(path="/home/lucas/Desktop/programming/Senior_project/project/data/",
-                                    sampling_rate=100)
+                                    sampling_rate=500)
 
     signals = list()
     signals.append([i[0] for i in data_source.give_one_signal()[0].tolist()])
+    
 
     coeffs = load_coeffs("./FIR_coefs_bandpass_5_15.csv")
 

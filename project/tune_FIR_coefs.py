@@ -38,13 +38,13 @@ def give_coefs():
     # https://www.allaboutcircuits.com/technical-articles/design-examples-of-fir-filters-using-window-method/
     sample_freq = 500      # hz
 
-    band_pass = False
+    band_pass = True
     lower_pass_band = convert_to_digital(0, sample_freq)         # hz
     lower_stop_band = convert_to_digital(10, sample_freq)         # hx
     lower_corner = (lower_stop_band + lower_pass_band) / 2
 
-    upper_pass_band = convert_to_digital(100, sample_freq)         # hz
-    upper_stop_band = convert_to_digital(150, sample_freq)         # hx
+    upper_pass_band = convert_to_digital(10, sample_freq)         # hz
+    upper_stop_band = convert_to_digital(20, sample_freq)         # hx
     upper_corner = (upper_stop_band + upper_pass_band) / 2
 
     delta_2 = attentuation(.7)    # Stop band reduction
