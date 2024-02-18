@@ -4,77 +4,81 @@
 #include <string.h>
 
 
-#define FIR_COEFS_LENGTH 100                                // tuned filter is 100 coefs long
-
-#define INPUT_SIGNAL_LENGTH 1000                                  // 100 samples/sec * 10 secs
-
-#define INPUT_SIGNAL_BUFFER_LENGTH (INPUT_SIGNAL_LENGTH - 1 + FIR_COEFS_LENGTH)
-
-// float input_sample_buf[INPUT_SIGNAL_BUFFER_LENGTH];  // Padded buffer for convolution
-// Returns the length of an array
-//	- When instantiating an array in the Python script, it is not necessary to append the NULL character
-// void init_buff(void){
-//     memset(input_sample_buf, 0, sizeof(input_sample_buf));
-// }
-
-void bandpass_fir_filter(float *input_signal, float *output_signal, float *coeffs, int input_length, int coef_length){
+void convolution(float *input_signal, float *output_signal, float *kernel, int input_length, int kernel_length){
     
-    //init_buff();            // Set buffer to all 0s
-    int sample_buffer_length = (input_length + coef_length - 1) * sizeof(float);
-    float *input_sample_buf = (float *)(malloc(sample_buffer_length));
-    memset(input_sample_buf, 0, sample_buffer_length);
-    memmove(&input_sample_buf[coef_length - 1], input_signal, input_length * sizeof(float) );    // Add padding to the input signal
+    // Implement Error checking
+
+    // Create an new input signal with padding on the front end
+    int buffer_length = (input_length + kernel_length - 1) * sizeof(float);        // Calculate buffer size
+    float *signal_buffer = (float *)(malloc(buffer_length));                  // allocate buffer
+    memset(signal_buffer, 0, buffer_length);                                  // init to 0
+    memmove(&signal_buffer[kernel_length - 1], input_signal, input_length * sizeof(float) );    // copy over input signal
     
     float accum;
-    float *curr_coef;       // Stores the address of the current index in the coeff array
+    float *curr_kernel;       // Stores the address of the current index in the coeff array
     float *curr_index;      // stores the address of the current indec in the input signal array
 
-
     for(int i = 0; i < input_length; i++){
-        curr_coef = &coeffs[0];                                 // Set the index for coefs to the beginning of the coeffs array
-        curr_index = &input_sample_buf[i + coef_length - 1];    // Set index to end of the input overlap window
+        curr_kernel = &kernel[0];                                 // Set the index for coefs to the beginning of the coeffs array
+        curr_index = &signal_buffer[i + kernel_length - 1];    // Set index to end of the input overlap window
         accum = 0;
 
-        for(int j = 0; j < coef_length; j++){
-            accum = accum + (*curr_coef * *curr_index);
-            curr_coef++;
-            curr_index--;
+        for(int j = 0; j < kernel_length; j++){
+            accum = accum + (*curr_kernel * *curr_index);
+            curr_kernel++;                                        // Move forwards through the coeffs array
+            curr_index--;                                       // move backwards through the input array
         }
         output_signal[i] = accum;
     }
 
-
-    /*
-    for(int i = 0; i < input_length; i++){
-        output_signal[i] = input_sample_buf[i + coef_length - 1];
-    }
-       
-    for(int i = 0; i < input_length; i++){
-        printf("%f, %f\n", input_sample_buf[i + coef_length - 1], input_signal[i])    ;
-    }
- 
-    for(int i = 0; i < input_length; i++){
-        printf("%f, %f\n", input_sample_buf[i], input_signal[i])    ;
-    }
-    */
-    //memcpy(padded_input, 0, signal_length * sizeof(float));
-
-    free(input_sample_buf);
-
-    return output_signal;
+    free(signal_buffer);     // free up allocated memory
 
 }
 
-void differentiate(float *input_signal, float *output_signal, int signal_length){
+float* fivepoint_diff(float *input_signal, float *output_signal, int signal_length, float sampling_period){
 
+    float coef_mult = 1.0 / (8.0 * sampling_period);
+    int output_signal_length = signal_length - 4;   // Two pads before the current time step, two pads after
+
+    for( int i = 2; i < signal_length - 2; i++){
+        float value = coef_mult * ( - (input_signal[i - 2]) - (2 * input_signal[i -1]) + (2 * input_signal[i + 1]) + (input_signal[i]) );
+        
+        // printf("%f, %f\n", input_signal[i], value);
+
+        output_signal[i] = value; 
+    }
+    
 }
 
 void squaring(float *input_signal, float *output_signal, int signal_length){
+    
+    for( int i = 0; i < signal_length; i++){
+        float value = input_signal[i] * input_signal[i];
+        
+        //printf("%f, %f\n", input_signal[i], value);
 
+        output_signal[i] = value; 
+    }
 }
 
-void moving_window_int(float *input_signal, float *output_signal){
+void moving_window_integration(float *input_signal, float *output_signal, int signal_length, int window_width){
+    
+    int buffer_length = (signal_length + window_width - 1) * sizeof(float);        // Calculate buffer size
+    float *signal_buffer = (float *)(malloc(buffer_length));                  // allocate buffer
+    memset(signal_buffer, 0, buffer_length);                                  // init to 0
+    memmove(&signal_buffer[window_width - 1], input_signal, signal_length * sizeof(float) );    // copy over input signal
+    
+    for( int i = 0; i < signal_length; i++){
 
+        float value = 0.0;
+        for( int j = 0; j < window_width; j++){
+            value += signal_buffer[i + window_width - j];
+        }        
+
+        output_signal[i] = value;  
+    }
+
+    free(signal_buffer);
 }
 
 void detect_QRS(float *input_signal, float *output_indices, int signal_length){

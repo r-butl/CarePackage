@@ -34,17 +34,16 @@ def convert_to_digital(corner_freq, sample_freq):
 def attentuation(reduction_percentage):
     return 20 * math.log10(1 - reduction_percentage)
 
-def give_coefs():
+def give_coefs(sample_freq):
     # https://www.allaboutcircuits.com/technical-articles/design-examples-of-fir-filters-using-window-method/
-    sample_freq = 500      # hz
 
     band_pass = True
     lower_pass_band = convert_to_digital(0, sample_freq)         # hz
-    lower_stop_band = convert_to_digital(10, sample_freq)         # hx
+    lower_stop_band = convert_to_digital(3, sample_freq)         # hx
     lower_corner = (lower_stop_band + lower_pass_band) / 2
 
-    upper_pass_band = convert_to_digital(10, sample_freq)         # hz
-    upper_stop_band = convert_to_digital(20, sample_freq)         # hx
+    upper_pass_band = convert_to_digital(12, sample_freq)         # hz
+    upper_stop_band = convert_to_digital(22, sample_freq)         # hx
     upper_corner = (upper_stop_band + upper_pass_band) / 2
 
     delta_2 = attentuation(.7)    # Stop band reduction
@@ -99,11 +98,11 @@ def dump_coefs(file_name, coefs):
 
 if __name__ == "__main__":
 
-    #
+    sample_rate = 100
     signal = give_one_signal()
-    coefs = give_coefs()
+    coefs = give_coefs(sample_rate)
 
-    coefs_file = "FIR_coefs_bandpass_40.csv"
+    coefs_file = "FIR_coefs_bandpass_100.csv"
     print(coefs)
     dump_coefs(file_name=coefs_file, coefs=coefs)
 
@@ -115,8 +114,8 @@ if __name__ == "__main__":
     w, h = s.freqz(coefs, worN=1024)
 
     # Output of the s.freqz is normalized with the nyquist 
-    target_upper = convert_to_digital(15, 500) / (2 * np.pi)
-    target_lower = convert_to_digital(5, 500) / (2 * np.pi)
+    target_upper = convert_to_digital(15, sample_rate) / (2 * np.pi)
+    target_lower = convert_to_digital(5, sample_rate) / (2 * np.pi)
     print(target_lower, target_upper)
 
     # First plot (stem plot)
@@ -124,13 +123,13 @@ if __name__ == "__main__":
 
     # Stem plot for coefficients
     plt.subplot(3, 1, 1)  # Two rows, one column, first plot
-    plt.title(f'Filter Order = {len(coefs)} Latency = {len(coefs)/500}s')
+    plt.title(f'Filter Order = {len(coefs)} Latency = {len(coefs)/sample_rate}s')
     plt.stem([i for i in range(-int(len(coefs)/2), math.ceil(len(coefs)/2) , 1)], coefs)
     plt.xlim([-100, 100])
 
     # Second plot (overlayed signal and convolved)
     plt.subplot(3, 1, 2)  # Two rows, one column, second plot
-    plt.plot([i for i in range(len(signal))], [signal[int(len(coefs)/500) + i] for i in range(len(signal))], label='Signal', color='lightblue')
+    plt.plot([i for i in range(len(signal))], [signal[int(len(coefs)/sample_rate) + i] for i in range(len(signal))], label='Signal', color='lightblue')
     plt.plot([i for i in range(len(convolved))], convolved, label='Convolved', color='orange')
     #plt.plot([i for i in range(len(median))], median, label='Median', color='red')
 
