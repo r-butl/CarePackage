@@ -16,7 +16,7 @@ def give_one_signal():
         data = np.array([signal for signal, meta in data])
         return data
 
-    path = '/home/lucas/Desktop/programming/Senior_project/project/data/'
+    path = '/home/lucas/Desktop/programming/classwork/Senior_project/project/data/'
     sampling_rate=500
     Y = pd.read_csv(path+'ptbxl_database.csv', index_col='ecg_id')
     print(Y)
@@ -39,7 +39,7 @@ def give_coefs(sample_freq):
 
     band_pass = True
     lower_pass_band = convert_to_digital(0, sample_freq)         # hz
-    lower_stop_band = convert_to_digital(3, sample_freq)         # hx
+    lower_stop_band = convert_to_digital(7, sample_freq)         # hx
     lower_corner = (lower_stop_band + lower_pass_band) / 2
 
     upper_pass_band = convert_to_digital(12, sample_freq)         # hz
