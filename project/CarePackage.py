@@ -15,6 +15,7 @@ def FIR(signal):
                 values.append(coef)
 
         return values
+    
     sampling_freq = 100
     # Coeffients depend on the frequency rate. Load the correct frequency coefficients.
     if sampling_freq == 500:
@@ -79,9 +80,8 @@ def pointwise_squaring(signal):
     output_signal = [output_signal[i] for i in range(len(output_signal))]  # Get the returned list point into a python list
     return output_signal
 
-def moving_window_integration(signal):
+def moving_window_integration(signal, window_size):
     
-    window_size = 20
     # Set up the function
     functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
     functions.moving_window_integration.argtypes = [ctypes.POINTER(ctypes.c_float),
@@ -120,11 +120,12 @@ def central_diff(signal, sampling_freq):
     output_signal = [output_signal[i] for i in range(len(output_signal))]  
     return output_signal
 
-def detect_QRS(signal):
+def detect_peak(signal, threshold):
 
     # Set up the function
     function = ctypes.CDLL('./pan_tompkins.so') 
-    function.detect_QRS.argtypes = [    ctypes.POINTER(ctypes.c_float),
+    function.detect_peak.argtypes = [   ctypes.POINTER(ctypes.c_float),
+                                        ctypes.c_float,
                                         ctypes.POINTER(ctypes.c_int),
                                         ctypes.c_int,
                                         ctypes.POINTER(ctypes.c_int)
@@ -134,7 +135,8 @@ def detect_QRS(signal):
     output_indices = cast_to_ctypes([0] * 100, ctypes.c_int)
     num_peaks = ctypes.c_int(0)
 
-    function.detect_QRS(cast_to_ctypes(signal, ctypes.c_float),
+    function.detect_peak(cast_to_ctypes(signal, ctypes.c_float),
+                        threshold,
                         output_indices,
                         len(signal),
                         ctypes.byref(num_peaks)

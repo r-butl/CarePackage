@@ -1,5 +1,16 @@
 {
     "files.associations": {
-        "iterator": "c"
+        "iterator": "c",
+        "socket.h": "c",
+        "types.h": "c",
+        "string_view": "c",
+        "__locale": "c",
+        "__string": "c",
+        "string": "c",
+        "bitset": "c",
+        "chrono": "c",
+        "algorithm": "c",
+        "__bit_reference": "c",
+        "unordered_map": "c"
     }
 }
