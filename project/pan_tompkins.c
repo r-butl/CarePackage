@@ -35,7 +35,7 @@ void convolution(float *input_signal, float *output_signal, float *kernel, int i
 
 }
 
-void fivepoint_diff(float *input_signal, float *output_signal, int signal_length, float sampling_period){
+void FPD(float *input_signal, float *output_signal, int signal_length, float sampling_period){
 
     float coef_mult = 1.0 / (8.0 * sampling_period);
     int output_signal_length = signal_length - 4;   // Two pads before the current time step, two pads after

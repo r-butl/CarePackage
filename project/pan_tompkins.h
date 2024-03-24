@@ -3,7 +3,7 @@
 
 void convolution(float *input_signal, float *output_signal, float *kernel, int input_length, int kernel_length);
 
-void fivepoint_diff(float *input_signal, float *output_signal, int signal_length, float sampling_period);
+void FPD(float *input_signal, float *output_signal, int signal_length, float sampling_period);
 
 void squaring(float *input_signal, float *output_signal, int signal_length);
 
