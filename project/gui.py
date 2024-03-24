@@ -3,85 +3,13 @@
 ##########################################################################################
 
 import sys
-import numpy as np
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+
 import CarePackage
-import dispatcher as d
+from SignalPlotter import *
+from PTBXLsource import *
 
-##########################################################################################
 
-class SignalPlotModel:
-    def __init__(self):
-        self.signals = []
-        self.labels = []
-        self.indices = []
-        self.xlim = [0, 1000]
-
-    def add_signal(self, signal=[], label="", indices=[]):
-        if indices is None:
-            indices = []
-        self.signals.append(signal)
-        self.labels.append(label)
-        self.indices.append(indices)
-
-    def reset(self):
-        self.signals = []
-        self.labels = []
-        self.indices = []
-
-class SignalPlotView(FigureCanvas):
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(SignalPlotView, self).__init__(fig)
-        self.setParent(parent)
-
-    def plot_signals(self, model):
-        self.figure.clf()
-        signal_count = len(model.signals)
-        if signal_count == 0:
-            return
-        
-        self.axes_list = [self.figure.add_subplot(signal_count, 1, i + 1) for i in range(signal_count)]
-
-        for i, (ax, signal) in enumerate(zip(self.axes_list, model.signals)):
-            ax.plot(range(len(signal)), signal, label=model.labels[i])
-            ax.set_xlim(model.xlim)
-            for index in model.indices[i]:
-                ax.axvline(x=index, color='r', linestyle='-')
-            if model.labels[i]:
-                ax.legend(loc='upper right')
-
-        self.draw()
-
-class SignalPlotController:
-    def __init__(self, model, view):
-        self.model = model
-        self.view = view
-
-    def add_signal(self, signal, label="", indices=None):
-        self.model.add_signal(signal, label, indices)
-
-    def display_signals(self):
-        self.view.plot_signals(self.model)
-
-    def reset_signals(self):
-        self.model.reset()
-
-############################################################################################        
-
-# Data controller 
-class DataController:
-    def __init__(self, sampling_freq=100):
-        self.sampling_freq = sampling_freq
-        self.data_source = d.data_dispatcher(path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/",
-                                    sampling_rate=self.sampling_freq)
-
-    def give_signal(self):
-        return [i[0] for i in self.data_source.give_one_signal()[0].tolist()]
-    
 ###########################################################################################
 
 
@@ -89,8 +17,6 @@ class FunctionBlockModel:
     def __init__(self):
         self.function = None
         self.options = []
-
-
 
 class PipelineController:
     def __init__(self, sampling_freq):
@@ -138,10 +64,11 @@ class MainWindow(QMainWindow):
 
         # Data base
         sampling_freq = 100
-        self.databaseController = DataController(sampling_freq=sampling_freq)
+        path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/"
+        self.dataController = DataController(sampling_freq=sampling_freq, path=path)
 
         # Signal Pipeline
-        self.pipelineController = PipelineController(self.databaseController.sampling_freq)
+        self.pipelineController = PipelineController(self.dataController.sampling_freq)
 
         # New Signal Button
         self.newSignalButton = QPushButton("New Signal", self)
@@ -154,7 +81,7 @@ class MainWindow(QMainWindow):
 
     def on_click_new_signal(self):
         self.signalController.reset_signals()
-        new_signal = self.databaseController.give_signal()
+        new_signal = self.dataController.give_signal()
         self.pipelineController.process_signal(self.signalController, new_signal)
         self.signalView.plot_signals(self.signalModel)
     

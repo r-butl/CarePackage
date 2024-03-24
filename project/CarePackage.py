@@ -19,9 +19,9 @@ def FIR(signal):
     sampling_freq = 100
     # Coeffients depend on the frequency rate. Load the correct frequency coefficients.
     if sampling_freq == 500:
-        coeffs = load_coeffs("./FIR_coefs_bandpass_500.csv")
+        coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_500.csv")
     else:
-        coeffs = load_coeffs("./FIR_coefs_bandpass_100.csv")
+        coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_100.csv")
 
     # Set up the function
     functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
