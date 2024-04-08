@@ -1,5 +1,8 @@
 import CarePackage
 from abc import ABC, abstractmethod
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QCheckBox, QSpinBox, QApplication, QPushButton
+import uuid
+import copy
 
 #################################################################################
 
@@ -29,6 +32,7 @@ class FIR(ProcessBlock):
         self.next_filter=next_filter
         self.options = {
             'name' : 'FIR Filter',
+            'uuid' : None,
             'peaks' : False,
             'coefs': []
         }
@@ -42,6 +46,7 @@ class FPD(ProcessBlock):
         self.next_filter=next_filter
         self.options = {
             'name' : 'Five Point Differential',
+            'uuid' : None,
             'peaks' : False,
             'sampling_freq': 100
         }
@@ -50,11 +55,12 @@ class FPD(ProcessBlock):
         ''' Executes the process block'''
         return CarePackage.FPD(signal, self.options['sampling_freq'])
 
-class PointwiseSquaring(ProcessBlock):
+class PS(ProcessBlock):
     def __init__(self, next_filter=None):
         self.next_filter=next_filter
         self.options = {
             'name' : 'Pointwise Squaring',
+            'uuid' : None,
             'peaks' : False,
         }
 
@@ -62,12 +68,12 @@ class PointwiseSquaring(ProcessBlock):
         ''' Executes the process block'''
         return CarePackage.pointwise_squaring(signal)
 
-
 class MWI(ProcessBlock):
     def __init__(self, next_filter=None):
         self.next_filter=next_filter
         self.options = {
             'name' : "Moving Window Integration",
+            'uuid' : None,
             'peaks' : False,
             'window_size' : 20
         }
@@ -81,6 +87,7 @@ class CD(ProcessBlock):
         self.next_filter=next_filter
         self.options = {
             'name' : 'Central Differential',
+            'uuid' : None,
             'peaks' : False,
             'sampling_freq' : 100
         }
@@ -91,30 +98,142 @@ class CD(ProcessBlock):
 
 #################################################################################
 
+class OptionPanelViewer(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+
+    def add_block_UI(self, block, update_option_callback, return_copy_callback):
+        # Create a container for each block
+        blockContainer = QWidget()
+        blockLayout = QVBoxLayout(blockContainer)
+
+        # Add a label
+        nameLabel = QLabel(block.options['name'])
+        blockLayout.addWidget(nameLabel)
+
+        # Add the UI Element's modifyable properties
+        for option, value in block.options.items():
+            if option in ['name', 'uuid']:
+                continue
+            
+            self._add_option_widget(option, value, block, blockLayout, update_option_callback)
+
+        # Apply style to customize appearance
+        blockContainer.setStyleSheet("""
+            QFrame {
+                margin: 5px; 
+            }
+            QLabel {
+                font-weight: bold;
+            }
+            QCheckBox, QSpinBox {
+                background-color: #f0f0f0; 
+            }
+        """)
+        
+        # Button for adding the block to the pipeline
+        addButton = QPushButton("Add")
+        addButton.clicked.connect(lambda: return_copy_callback(block))
+        blockLayout.addWidget(addButton)
+
+        self.layout.addWidget(blockContainer)
+
+    def _add_option_widget(self, option, value, block, layout, update_option_callback):
+
+        optionWidget = None
+
+        # Check what data type the option is and set it accordingly
+        if isinstance(value, bool):
+            optionWidget = QCheckBox()
+            optionWidget.setChecked(value)
+            optionWidget.stateChanged.connect(lambda state, opt=option, blk=block: update_option_callback(blk, opt, state))
+        elif isinstance(value, (int, float)):
+            optionWidget = QSpinBox()
+            optionWidget.setValue(value)
+            optionWidget.valueChanged.connect(lambda value, opt=option, blk=block: update_option_callback(blk, opt, value))
+
+        # Create a container widget for the option
+        optionContainer = QWidget()
+        optionLayout = QHBoxLayout(optionContainer)
+        optionLabel = QLabel(option)
+        optionLayout.addWidget(optionLabel)
+        optionLayout.addWidget(optionWidget)
+
+        # Add styles to customize appearance
+        layout.addWidget(optionContainer)
+
+############################################################################
+
 class PipelineController:
-    def __init__(self, sampling_freq):
-        self.process_options = [
+    def __init__ (self, sampling_rate, option_viewer=None, pipeline_viewer=None, pipeline_model=None):
+        self.starting_point = None
+
+        self.options = [
+            PS(),
+            FIR(),
             CD(),
-            PointwiseSquaring(),
-            MWI()
+            MWI(),
+            FPD(),
         ]
 
-        self.update_sampling_rate(sampling_freq)
-        
-    def process_signal(self, signalPlotController, signal):
+        self.pipeline_model = pipeline_model
+        self.pipeline_viewer = pipeline_viewer
+        self.option_viewer = option_viewer
 
+        self.setup_UI()
+
+    def setup_UI(self):
+        '''Sets up the option panel and the pipeline viewer'''
+        for block in self.options:
+            self.option_viewer.add_block_UI(block, self.update_option, self.option_panel_return_block_callback)
+
+    def update_option(self, block, option, value):
+        '''Used to update options in the process blocks'''
+        if isinstance(block.options[option], bool):
+            block.options[option] = bool(value)
+        else:
+            block.options[option] = value 
+
+    def option_panel_return_block_callback(self, block):
+        '''Gets a copy of the process block from the option panel and passes it to the pipeline'''
+        if self.pipeline_model is not None:
+            newObject = copy.deepcopy(block)
+            self.pipeline_model.add_process_block(newObject)
+    
+class PipelineModel:
+    def __init__(self, update_signalview_callback):
+        self.pipeline = []
+        self.view_callback = update_signalview_callback
+
+    def add_process_block(self, process_block):
+        """Adds a new process block to the pipeline"""
+        new_block = process_block
+        new_block.options['uuid'] = uuid.uuid4()    # Create a new uuid for the block
+
+        # The block to the pipeline and set its next filter
+        if self.pipeline:
+            self.pipeline[-1].set_next_filter(new_block)
+        
+        self.pipeline.append(process_block)
+        self.view_callback()
+
+    def process_signal(self, signalPlotController, signal):
+        signalPlotController.reset_signals()
         signalPlotController.add_signal(signal, "Base Signal", [])
-        for p in self.process_options:
+        for p in self.pipeline:
             signal = p.process(signal)
             signalPlotController.add_signal(signal, 
-                                  p.get_options()['name'], 
-                                  CarePackage.detect_peak(signal, 0.65) if p.get_options()['peaks'] else [])
-            
-    def update_sampling_rate(self, new_rate):
-        self.sampling_freq = new_rate
+                                    p.get_options()['name'], 
+                                    CarePackage.detect_peak(signal, 0.65) if p.get_options()['peaks'] else [])            
 
-        # Preset the process blocks with the data configuration for testing
-        for i in self.process_options:
-            i.set_options('sampling_freq', self.sampling_freq)
+class PipelineViewer(QWidget):
+    def __init__(self, controller):
+        super().__init__()
+        self.controller = controller
+        self.initUI()
 
-
+    def initUI(self):
+        self.layout = QVBoxLayout()
+        self.pipelineDisplay = QLabel("Pipeline Configuration")
+        self.layout.addWidget(self.pipelineDisplay)

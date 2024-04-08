@@ -45,6 +45,7 @@ def FIR(signal, ceoffs):
 def FPD(signal, sampling_freq):
     """Five point differential"""
     sampling_period = 1 / sampling_freq;
+    
     # Set up the function
     functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
     functions.FPD.argtypes = [  ctypes.POINTER(ctypes.c_float),
@@ -53,7 +54,7 @@ def FPD(signal, sampling_freq):
                                 ctypes.c_float]
 
     # run it
-    output_signal = cast_to_ctypes([0.0] * (len(signal) - 4), ctypes.c_float)
+    output_signal = cast_to_ctypes( [0.0] * (len(signal) - 4), ctypes.c_float)
     functions.FPD(cast_to_ctypes(   signal, ctypes.c_float),
                                     output_signal,
                                     (len(signal)),

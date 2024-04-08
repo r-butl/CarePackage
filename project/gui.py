@@ -25,20 +25,25 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-
         self.setWindowTitle("CarePackage")
         self.setGeometry(100, 100, 1000, 10000)
+        self.current_signal = None
+        
+        # Main layout
         centralWidget = QWidget(self)
         self.setCentralWidget(centralWidget)
-        mainLayout = QVBoxLayout(centralWidget)
 
+        # Top level layout
+        topLevelLayout = QHBoxLayout(centralWidget)
 
+        # Left and right panel
+        leftPanelContainer = QWidget()
+        leftPanel = QVBoxLayout(leftPanelContainer)
 
+        rightPanelContainer = QWidget()
+        rightPanel = QHBoxLayout(rightPanelContainer)
 
         ##################### Signal Plotter Sub Window
-
-
-
 
         self.signalPlotterGroup = QGroupBox("Signal Plotter")
         signalPlotterLayout = QVBoxLayout(self.signalPlotterGroup)
@@ -54,10 +59,7 @@ class MainWindow(QMainWindow):
         signalPlotterLayout.addWidget(self.newSignalButton)
 
 
-
-
         ##################### Data Base Sub Window
-
 
         self.sampling_options = [100, 500]
         self.sampling_options_index = 0
@@ -68,11 +70,15 @@ class MainWindow(QMainWindow):
 
         self.dataController = DataController(sampling_freq=self.sampling_options[self.sampling_options_index], path=self.path)
 
+        # controlling the data
         self.sampleSelect = QComboBox()
         self.sampleSelect.addItems([ str(i) for i in self.sampling_options ])
-        self.sampleSelect.currentIndexChanged.connect( self.update_sampling_rate )
+        self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
+
         self.sampleChange = QPushButton("Apply Changes", self)
         self.sampleChange.clicked.connect( self.applySampleChange )
+
+        ######
 
         dataControllerLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
         dataControllerLayout.addWidget(self.sampleSelect)
@@ -81,29 +87,43 @@ class MainWindow(QMainWindow):
 
         ###################### Pipeline Construction Window
 
-        self.pipelineController = PipelineController(self.dataController.sampling_freq)
+        self.pipelineControllerGroup = QGroupBox("Pipeline Constructor")
+        pipelineControllerLayout = QVBoxLayout(self.pipelineControllerGroup)
 
+        self.optionPanelViewer = OptionPanelViewer()
+        self.pipelineModel = PipelineModel(self.update_signal_view)
+        self.pipelineController = PipelineController(   sampling_rate=self.dataController.sampling_freq,  
+                                                        option_viewer=self.optionPanelViewer, 
+                                                        pipeline_viewer=None, 
+                                                        pipeline_model=self.pipelineModel)
+        
+        pipelineControllerLayout.addWidget(self.optionPanelViewer)
 
         ####################
 
         
-        mainLayout.addWidget(self.signalPlotterGroup, 4)
-        mainLayout.addWidget(self.dataControllerGroup, 1)
-        centralWidget.setLayout(mainLayout)
+        leftPanel.addWidget(self.signalPlotterGroup, 6)
+        leftPanel.addWidget(self.dataControllerGroup, 1)
 
+        rightPanel.addWidget(self.pipelineControllerGroup, 3)
 
+        topLevelLayout.addWidget(leftPanelContainer)
+        topLevelLayout.addWidget(rightPanelContainer)
 
     def on_click_new_signal(self):
         self.signalController.reset_signals()
-        new_signal = self.dataController.give_signal()
-        self.pipelineController.process_signal(self.signalController, new_signal)
+        self.current_signal = self.dataController.give_signal()
+        self.update_signal_view(self.current_signal)
+
+    def update_signal_view(self, signal=None):
+        if signal is None:
+            signal = self.current_signal
+
+        self.pipelineModel.process_signal(self.signalController, signal)
         self.signalView.plot_signals(self.signalModel)
 
-    def update_sampling_rate(self, i):
-        self.sampling_options_index = i
-
     def applySampleChange(self):
-        self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline
+        #self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline
         self.dataController = DataController(sampling_freq=self.sampling_options[self.sampling_options_index], path=self.path)    # Reload the dataabase
         self.on_click_new_signal()
 
