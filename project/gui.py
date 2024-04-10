@@ -12,7 +12,8 @@ from PyQt5.QtWidgets import     (QApplication,
                                 QPushButton, 
                                 QGroupBox,
                                 QComboBox,
-                                QLabel
+                                QLabel,
+                                QScrollArea
                                 )
 
 from SignalPlotter import *
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow):
         self.newSignalButton.clicked.connect( self.on_click_new_signal )
         
         signalPlotterLayout.addWidget(self.signalView)
+
         signalPlotterLayout.addWidget(self.newSignalButton)
 
 
@@ -76,7 +78,7 @@ class MainWindow(QMainWindow):
         self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
 
         self.sampleChange = QPushButton("Apply Changes", self)
-        self.sampleChange.clicked.connect( self.applySampleChange )
+        self.sampleChange.clicked.connect( self.apply_sample_change )
 
         ######
 
@@ -105,10 +107,10 @@ class MainWindow(QMainWindow):
         leftPanel.addWidget(self.signalPlotterGroup, 6)
         leftPanel.addWidget(self.dataControllerGroup, 1)
 
-        rightPanel.addWidget(self.pipelineControllerGroup, 3)
+        rightPanel.addWidget(self.pipelineControllerGroup)
 
-        topLevelLayout.addWidget(leftPanelContainer)
-        topLevelLayout.addWidget(rightPanelContainer)
+        topLevelLayout.addWidget(leftPanelContainer,5)
+        topLevelLayout.addWidget(rightPanelContainer,2)
 
     def on_click_new_signal(self):
         self.signalController.reset_signals()
@@ -122,7 +124,7 @@ class MainWindow(QMainWindow):
         self.pipelineModel.process_signal(self.signalController, signal)
         self.signalView.plot_signals(self.signalModel)
 
-    def applySampleChange(self):
+    def apply_sample_change(self):
         #self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline
         self.dataController = DataController(sampling_freq=self.sampling_options[self.sampling_options_index], path=self.path)    # Reload the dataabase
         self.on_click_new_signal()

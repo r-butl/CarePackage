@@ -27,6 +27,9 @@ class ProcessBlock(ABC):
     def set_next_filter(self, filter):
         self.next_filter=filter
 
+    def remove_next_filter(self):
+        self.next_filter=None
+
 class FIR(ProcessBlock):
     def __init__(self, next_filter=None):
         self.next_filter=next_filter
@@ -101,7 +104,9 @@ class CD(ProcessBlock):
 class OptionPanelViewer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.layout = QVBoxLayout(self)
+        self.container = QWidget(self)
+
+        self.layout = QVBoxLayout(self.container)
 
     def add_block_UI(self, block, update_option_callback, return_copy_callback):
         # Create a container for each block
@@ -114,7 +119,7 @@ class OptionPanelViewer(QWidget):
 
         # Add the UI Element's modifyable properties
         for option, value in block.options.items():
-            if option in ['name', 'uuid']:
+            if option in ['name', 'uuid', 'sampling_freq']:
                 continue
             
             self._add_option_widget(option, value, block, blockLayout, update_option_callback)
@@ -216,6 +221,15 @@ class PipelineModel:
             self.pipeline[-1].set_next_filter(new_block)
         
         self.pipeline.append(process_block)
+        self.view_callback()
+
+    def remove_process_block(self):
+        '''Removes the latest signal processing block'''
+        del self.pipeline[-1]       # Remove the last process block
+
+        if self.pipeline:
+            self.pipeline[-1].remove_next_filter()  # Remove the next filter pointer from the last process block
+        
         self.view_callback()
 
     def process_signal(self, signalPlotController, signal):

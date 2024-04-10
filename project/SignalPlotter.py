@@ -34,7 +34,6 @@ class SignalPlotView(FigureCanvas):
             return
         
         self.axes_list = [self.figure.add_subplot(signal_count, 1, i + 1) for i in range(signal_count)]
-
         for i, (ax, signal) in enumerate(zip(self.axes_list, model.signals)):
             ax.plot(range(len(signal)), signal, label=model.labels[i])
             ax.set_xlim(model.xlim)
