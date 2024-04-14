@@ -1,5 +1,25 @@
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QScrollArea, QSizePolicy, QSpacerItem
+
+class IndividualPlotView(FigureCanvas):
+    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000]):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        if signal is not None:
+            self.axes.plot(range(len(signal)), signal, label=label)
+            self.axes.set_xlim(xlim)
+            for index in indices:
+                self.axes.axvline(x=index, color='r', linestyle='-')
+            if label:
+                self.axes.set_title(label)
+        super().__init__(fig)
+        self.setParent(parent)
+
+        # Set a fixed height for the plot
+        pixelsPerInch = dpi
+        fixedHeightInPixels = height * pixelsPerInch
+        self.setFixedHeight(fixedHeightInPixels)
 
 class SignalPlotModel:
     def __init__(self):
@@ -20,29 +40,63 @@ class SignalPlotModel:
         self.labels = []
         self.indices = []
 
-class SignalPlotView(FigureCanvas):
-    def __init__(self, parent=None, width=6, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(SignalPlotView, self).__init__(fig)
-        self.setParent(parent)
+class SignalPlotView(QWidget):
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        self.model = model
 
-    def plot_signals(self, model):
-        self.figure.clf()
-        signal_count = len(model.signals)
-        if signal_count == 0:
-            return
+        self.initUI()
+        self.display_signals()
+
+    def initUI(self):
+        self.scrollArea = QScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+
+        # Container for the plots
+        self.plotContainerWidget = QWidget()
+        self.plotLayout = QVBoxLayout(self.plotContainerWidget)
+        self.scrollArea.setWidget(self.plotContainerWidget)
+
+        # Main layout for this widget to include the scroll area
+        mainLayout = QVBoxLayout(self)
+        mainLayout.addWidget(self.scrollArea)
+        self.setLayout(mainLayout)
+
+        # Set the size policy to make the widget expanding
+        self.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
+
+        # Ensure the scroll area expands fully within SignalPlotView
+        self.scrollArea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
+
+    def clearLayout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)   # take the first item in the layout
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                # Recursively clear any nested layouts
+                nestedLayout = item.layout()
+                if nestedLayout:
+                    self.clearLayout(nestedLayout)
+                # Remove spacer items or other non-widget items
+                else:
+                    del item
+    
+    def display_signals(self):
         
-        self.axes_list = [self.figure.add_subplot(signal_count, 1, i + 1) for i in range(signal_count)]
-        for i, (ax, signal) in enumerate(zip(self.axes_list, model.signals)):
-            ax.plot(range(len(signal)), signal, label=model.labels[i])
-            ax.set_xlim(model.xlim)
-            for index in model.indices[i]:
-                ax.axvline(x=index, color='r', linestyle='-')
-            if model.labels[i]:
-                ax.legend(loc='upper right')
+        self.clearLayout(self.plotLayout)
 
-        self.draw()
+        # Create individual plots for each signal
+        for i in range(len(self.model.signals)):
+            plotView = IndividualPlotView(parent=None,  signal=self.model.signals[i],
+                                          label=self.model.labels[i], indices=self.model.indices[i],
+                                          xlim=self.model.xlim)
+            self.plotLayout.addWidget(plotView)
+        
+        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.plotLayout.addSpacerItem(spacer)
+
 
 class SignalPlotController:
     def __init__(self, model, view):

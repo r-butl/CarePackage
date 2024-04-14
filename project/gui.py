@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import     (QApplication,
                                 QGroupBox,
                                 QComboBox,
                                 QLabel,
-                                QScrollArea
+                                QSizePolicy
                                 )
 
 from SignalPlotter import *
@@ -27,90 +27,100 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("CarePackage")
-        self.setGeometry(100, 100, 1000, 10000)
+        self.setGeometry(100, 50, 1500, 1000)
         self.current_signal = None
         
-        # Main layout
-        centralWidget = QWidget(self)
-        self.setCentralWidget(centralWidget)
+        ################################################## MVC defintions
 
-        # Top level layout
-        topLevelLayout = QHBoxLayout(centralWidget)
-
-        # Left and right panel
-        leftPanelContainer = QWidget()
-        leftPanel = QVBoxLayout(leftPanelContainer)
-
-        rightPanelContainer = QWidget()
-        rightPanel = QHBoxLayout(rightPanelContainer)
-
-        ##################### Signal Plotter Sub Window
-
-        self.signalPlotterGroup = QGroupBox("Signal Plotter")
-        signalPlotterLayout = QVBoxLayout(self.signalPlotterGroup)
-
-        self.signalView = SignalPlotView(self)
-        self.signalModel = SignalPlotModel()
-        self.signalController = SignalPlotController(self.signalModel, self.signalView)
-
-        self.newSignalButton = QPushButton("New Signal", self)
-        self.newSignalButton.clicked.connect( self.on_click_new_signal )
-        
-        signalPlotterLayout.addWidget(self.signalView)
-
-        signalPlotterLayout.addWidget(self.newSignalButton)
-
-
-        ##################### Data Base Sub Window
+        ###  Data Base 
 
         self.sampling_options = [100, 500]
         self.sampling_options_index = 0
         self.path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/"
 
-        self.dataControllerGroup = QGroupBox("Data Controller")
-        dataControllerLayout = QVBoxLayout(self.dataControllerGroup)
+        self.dataController = DataController(           sampling_freq=self.sampling_options[self.sampling_options_index], 
+                                                        path=self.path)
 
-        self.dataController = DataController(sampling_freq=self.sampling_options[self.sampling_options_index], path=self.path)
+        ### Pipeline Construction 
 
-        # controlling the data
+        self.optionPanelViewer = OptionPanelViewer()
+        self.pipelineModel = PipelineModel()
+        self.pipelineController = PipelineController(   sampling_rate=self.dataController.sampling_freq,  
+                                                        option_viewer=self.optionPanelViewer, 
+                                                        pipeline_viewer=None, 
+                                                        pipeline_model=self.pipelineModel,
+                                                        update_view_callback=self.update_signal_view)
+        
+        ### Signal Plotter
+
+        self.signalModel = SignalPlotModel()
+        self.signalView = SignalPlotView(               model=self.signalModel)
+        self.signalController = SignalPlotController(   model=self.signalModel, 
+                                                        view=self.signalView)
+        
+        ################################################# Utilities Definition
+
+        # Select Sample rate
         self.sampleSelect = QComboBox()
         self.sampleSelect.addItems([ str(i) for i in self.sampling_options ])
         self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
 
+        # Apply Sample rate changes
         self.sampleChange = QPushButton("Apply Changes", self)
         self.sampleChange.clicked.connect( self.apply_sample_change )
 
-        ######
+        # New Signal Button
+        self.newSignalButton = QPushButton("New Signal", self)
+        self.newSignalButton.clicked.connect(self.on_click_new_signal)
 
-        dataControllerLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
-        dataControllerLayout.addWidget(self.sampleSelect)
-        dataControllerLayout.addWidget(self.sampleChange)
+        # Remove Latest Filter Button
+        self.removeFilterButton = QPushButton("Remove Last Filter", self)
+        self.removeFilterButton.clicked.connect(self.pipelineController.remove_last_filter)
+
+        ##################################################### 
+
+        centralWidget = QWidget(self)
+        self.setCentralWidget(centralWidget)
+
+        topLevelLayout = QHBoxLayout(centralWidget)
+
+        leftPanelContainer = QWidget()
+
+        leftPanel = QVBoxLayout(leftPanelContainer)
+
+        centerPanelContainer = QWidget()
+
+        centerPanel = QVBoxLayout(centerPanelContainer)
+
+        rightPanelContainer = QWidget()
+        rightPanel = QVBoxLayout(rightPanelContainer)
 
 
-        ###################### Pipeline Construction Window
+        self.controlPanelGroup = QGroupBox("Control Panel")
+        controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
 
-        self.pipelineControllerGroup = QGroupBox("Pipeline Constructor")
-        pipelineControllerLayout = QVBoxLayout(self.pipelineControllerGroup)
 
-        self.optionPanelViewer = OptionPanelViewer()
-        self.pipelineModel = PipelineModel(self.update_signal_view)
-        self.pipelineController = PipelineController(   sampling_rate=self.dataController.sampling_freq,  
-                                                        option_viewer=self.optionPanelViewer, 
-                                                        pipeline_viewer=None, 
-                                                        pipeline_model=self.pipelineModel)
-        
-        pipelineControllerLayout.addWidget(self.optionPanelViewer)
 
-        ####################
+        #####################################################  Layout
 
-        
-        leftPanel.addWidget(self.signalPlotterGroup, 6)
-        leftPanel.addWidget(self.dataControllerGroup, 1)
+        # Left Panel
+        leftPanel.addWidget(self.optionPanelViewer)
+        leftPanel.addWidget(self.removeFilterButton)
 
-        rightPanel.addWidget(self.pipelineControllerGroup)
+        # Center Panel
+        centerPanel.addWidget(self.signalView)
 
-        topLevelLayout.addWidget(leftPanelContainer,5)
-        topLevelLayout.addWidget(rightPanelContainer,2)
+        controlPanelLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
+        controlPanelLayout.addWidget(self.sampleSelect)
+        controlPanelLayout.addWidget(self.sampleChange)
+        controlPanelLayout.addWidget(self.newSignalButton)
+
+        centerPanel.addWidget(self.controlPanelGroup)
+
+
+        # All together now
+        topLevelLayout.addWidget(leftPanelContainer,1)
+        topLevelLayout.addWidget(centerPanelContainer, 4)
 
     def on_click_new_signal(self):
         self.signalController.reset_signals()
@@ -122,7 +132,7 @@ class MainWindow(QMainWindow):
             signal = self.current_signal
 
         self.pipelineModel.process_signal(self.signalController, signal)
-        self.signalView.plot_signals(self.signalModel)
+        self.signalView.display_signals()
 
     def apply_sample_change(self):
         #self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline

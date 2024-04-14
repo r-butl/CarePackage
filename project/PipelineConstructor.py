@@ -1,6 +1,6 @@
 import CarePackage
 from abc import ABC, abstractmethod
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QCheckBox, QSpinBox, QApplication, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QCheckBox, QSpinBox, QPushButton, QSizePolicy
 import uuid
 import copy
 
@@ -115,6 +115,8 @@ class OptionPanelViewer(QWidget):
 
         # Add a label
         nameLabel = QLabel(block.options['name'])
+        nameLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
         blockLayout.addWidget(nameLabel)
 
         # Add the UI Element's modifyable properties
@@ -140,6 +142,8 @@ class OptionPanelViewer(QWidget):
         # Button for adding the block to the pipeline
         addButton = QPushButton("Add")
         addButton.clicked.connect(lambda: return_copy_callback(block))
+        addButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
         blockLayout.addWidget(addButton)
 
         self.layout.addWidget(blockContainer)
@@ -160,18 +164,21 @@ class OptionPanelViewer(QWidget):
 
         # Create a container widget for the option
         optionContainer = QWidget()
+        optionContainer.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
+
         optionLayout = QHBoxLayout(optionContainer)
         optionLabel = QLabel(option)
         optionLayout.addWidget(optionLabel)
         optionLayout.addWidget(optionWidget)
 
         # Add styles to customize appearance
+
         layout.addWidget(optionContainer)
 
 ############################################################################
 
 class PipelineController:
-    def __init__ (self, sampling_rate, option_viewer=None, pipeline_viewer=None, pipeline_model=None):
+    def __init__ (self, sampling_rate, option_viewer=None, pipeline_viewer=None, pipeline_model=None, update_view_callback=None):
         self.starting_point = None
 
         self.options = [
@@ -185,6 +192,8 @@ class PipelineController:
         self.pipeline_model = pipeline_model
         self.pipeline_viewer = pipeline_viewer
         self.option_viewer = option_viewer
+
+        self.update_view_callback = update_view_callback
 
         self.setup_UI()
 
@@ -205,11 +214,17 @@ class PipelineController:
         if self.pipeline_model is not None:
             newObject = copy.deepcopy(block)
             self.pipeline_model.add_process_block(newObject)
+        
+        self.update_view_callback()
+
+    def remove_last_filter(self):
+        self.pipeline_model.remove_process_block()
+
+        self.update_view_callback()
     
 class PipelineModel:
-    def __init__(self, update_signalview_callback):
+    def __init__(self):
         self.pipeline = []
-        self.view_callback = update_signalview_callback
 
     def add_process_block(self, process_block):
         """Adds a new process block to the pipeline"""
@@ -221,17 +236,15 @@ class PipelineModel:
             self.pipeline[-1].set_next_filter(new_block)
         
         self.pipeline.append(process_block)
-        self.view_callback()
 
     def remove_process_block(self):
         '''Removes the latest signal processing block'''
-        del self.pipeline[-1]       # Remove the last process block
+        if len(self.pipeline) > 0:
+            del self.pipeline[-1]       # Remove the last process block
 
-        if self.pipeline:
+        if len(self.pipeline) > 0:
             self.pipeline[-1].remove_next_filter()  # Remove the next filter pointer from the last process block
         
-        self.view_callback()
-
     def process_signal(self, signalPlotController, signal):
         signalPlotController.reset_signals()
         signalPlotController.add_signal(signal, "Base Signal", [])
