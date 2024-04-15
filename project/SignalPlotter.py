@@ -11,18 +11,44 @@ class IndividualPlotView(FigureCanvas):
         self.block_id = id
 
         self.axes = self.fig.add_subplot(111)
-        if signal:
-            self.axes.plot(range(len(signal)), signal, label=label)
-            self.axes.set_xlim(xlim)
-            for index in indices:
-                self.axes.axvline(x=index, color='r', linestyle='-')
-            if label:
-                self.axes.set_title(label)
+        self.line = None    # Plot line
+        self.indicies_lines = []    # lines of indicies
+        self.initialize_plot(signal, label, indices, xlim)
 
         # Set a fixed height for the plot
         self.setFixedHeight(height * dpi)
 
         self.init_controls()
+
+    def initialize_plot(self, signal, label, indices, xlim):
+        """Initial the plot"""
+        if signal:
+            self.line, = self.axes.plot(range(len(signal)), signal, label=label)
+            self.axes.set_xlim(xlim)
+            for index in indices:
+                line = self.axes.axvline(x=index, color='r', linestyle='-')
+                self.indicies_lines.append(line)    # Store each vertical line
+            if label:
+                self.axes.set_title(label)
+
+    def update_signal(self, new_signal, new_indices=None):
+        """Update the plot with the new signal"""
+        if self.line is not None:
+            self.line.set_ydata(new_signal)
+            self.line.set_xdata(range(len(new_signal)))
+                                
+        if new_indices is not None:
+            # Remove old indicies
+            for line in self.indices_lines:
+                line.remove()
+            self.indicies_lines.clear()
+
+            # Add new indices
+            for index in new_indices:
+                line = self.axes.axvline(x=index, color='r', linestyle='-')
+                self.indicies_lines.append(line)
+
+        self.fig.canvas.draw_idle()     # redraw the plot
 
     def init_controls(self):
         layout = QHBoxLayout()
@@ -58,29 +84,10 @@ class IndividualPlotView(FigureCanvas):
         if self.controller:
             self.controller.open_filter_settings(self.block_id)
 
-class SignalPlotModel:
-    def __init__(self):
-        self.signals = []
-        self.labels = []
-        self.indices = []
-        self.xlim = [0, 1000]
-
-    def add_signal(self, signal=[], label="", indices=[]):
-        if indices is None:
-            indices = []
-        self.signals.append(signal)
-        self.labels.append(label)
-        self.indices.append(indices)
-
-    def reset(self):
-        self.signals = []
-        self.labels = []
-        self.indices = []
-
 class SignalPlotView(QWidget):
-    def __init__(self, model, pipeline_controller, parent=None):
+    def __init__(self, pipeline, pipeline_controller, parent=None):
         super().__init__(parent)
-        self.model = model
+        self.pipeline = pipeline
         self.pipeline_controller = pipeline_controller
 
         self.initUI()

@@ -1,103 +1,159 @@
-import CarePackage
-from abc import ABC, abstractmethod
+
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QCheckBox, QSpinBox, QPushButton, QSizePolicy
 import uuid
 import copy
+from ProcessBlocks import *
+import CarePackage
 
 #################################################################################
 
-class ProcessBlock(ABC):
-    def __init__(self, next_filter=None):
-        self.next_filter=next_filter
+class PipelineModel:
+    ''' The pipeline is a directed graph'''
 
-    @abstractmethod
-    def process(self, signal):
-        ''' Executes the process block'''
-        pass
+    def __init__(self):
+        self.pipeline_start = None
+        self.blocks = []
 
-    def get_options(self):
-        ''' Returns the configurable parameters of the process block'''
-        return self.options
+    def add_process_block(self, process_block):
+        """Adds a new process block to the pipeline"""
+        new_block = process_block
+        new_block.info['uuid'] = uuid.uuid4()    # Create a new uuid for the block
 
-    def set_options(self, option, value):
-        ''' Sets the configurable parameters of the process block'''
-        if option in self.options and type(value) == type(self.options[option]):
-            self.options[option] = value
+        # The block to the pipeline and set its next filter
+        if self.pipeline_start == None:
+            self.pipeline_start = new_block
+        else:
+            # Find the end of the graph and append the block there
+            curr = self.pipeline_start
+            while curr != None:
+                if curr.next_filter == None:
+                    curr.next_filter = new_block
+                    break
+                curr = curr.next_filter
+        
+        # Put it in the list
+        self.blocks.append(new_block)
 
-    def set_next_filter(self, filter):
-        self.next_filter=filter
+    def remove_by_id(self, id):
+        ''' Remove an element by its ID'''
+        curr = self.pipeline_start
+        prev = None
 
-    def remove_next_filter(self):
-        self.next_filter=None
+        while curr is not None:
+            if curr.info['uuid'] == id:
+                # Check if this is the first block in the pipeline
+                if prev == None:
+                    self.pipeline_start = curr.next_filter
+                else:
+                    prev.next_filter = curr.next_filter
+                
+                del curr
+                return
+            else:
+                prev = curr
+                curr = curr.next_filter
 
-class FIR(ProcessBlock):
-    def __init__(self, next_filter=None):
-        self.next_filter=next_filter
-        self.options = {
-            'name' : 'FIR Filter',
-            'uuid' : None,
-            'peaks' : False,
-            'coefs': []
-        }
+    def move_filter_up(self, id):
+        """Move the Block up the pipeline"""
 
-    def process(self, signal):
-        ''' Executes the process block'''
-        return CarePackage.FIR(signal, self.options['coefs'])
+        #       0 -> 1 -> 2
+        #           1. Set 2 pointing to 1
+        #       
+        target = self.pipeline_start
+        prev = None
 
-class FPD(ProcessBlock):
-    def __init__(self, next_filter=None):
-        self.next_filter=next_filter
-        self.options = {
-            'name' : 'Five Point Differential',
-            'uuid' : None,
-            'peaks' : False,
-            'sampling_freq': 100
-        }
+        while curr is not None and curr.next_filter != None:
+            if curr.next_filter.info['uuid'] == id:
+                if prev == None:
+                    # We are currently at the head of the pipeline
+                    
+                else:
+                    if 
+
+                return
+            else:
+                prev = curr
+                curr = curr.next_filter
+
+        
+    def move_filter_down(self, id):
+        index = 0
+        for i in range(len(self.pipeline)):
+            if self.pipeline[i]['uuid'] == id:
+                index = i
+
+        # Swap the elements:
+        if len(self.pipeline) > 1 and index < len(self.pipeline) - 1:
+            self.pipeline[index], self.pipeline[index + 1] = self.pipeline[index + 1], self.pipeline[index]
     
-    def process(self, signal):
-        ''' Executes the process block'''
-        return CarePackage.FPD(signal, self.options['sampling_freq'])
+    def open_filter_settings(self, id):
+        pass
+        
+    def process_signal(self, signalPlotController, signal):
+        signalPlotController.reset_signals()
+        signalPlotController.add_signal(signal, "Base Signal", [])
+        for p in self.pipeline:
+            signal = p.process(signal)
+            signalPlotController.add_signal(signal, 
+                                    p.get_info()['name'], 
+                                    CarePackage.detect_peak(signal, 0.65) if p.get_info()['peaks'] else [])            
 
-class PS(ProcessBlock):
-    def __init__(self, next_filter=None):
-        self.next_filter=next_filter
-        self.options = {
-            'name' : 'Pointwise Squaring',
-            'uuid' : None,
-            'peaks' : False,
-        }
+#################################################################################
 
-    def process(self, signal):
-        ''' Executes the process block'''
-        return CarePackage.pointwise_squaring(signal)
+class PipelineController:
+    def __init__ (self, sampling_rate, option_viewer=None, pipeline_model=None, update_view_callback=None):
+        self.starting_point = None
 
-class MWI(ProcessBlock):
-    def __init__(self, next_filter=None):
-        self.next_filter=next_filter
-        self.options = {
-            'name' : "Moving Window Integration",
-            'uuid' : None,
-            'peaks' : False,
-            'window_size' : 20
-        }
+        self.info = [
+            PS(),
+            FIR(),
+            CD(),
+            MWI(),
+            FPD(),
+        ]
 
-    def process(self, signal):
-        ''' Executes the process block'''
-        return CarePackage.moving_window_integration(signal, self.options['window_size'])
+        self.pipeline_model = pipeline_model
+        self.option_viewer = option_viewer
 
-class CD(ProcessBlock):
-    def __init__(self, next_filter=None):
-        self.next_filter=next_filter
-        self.options = {
-            'name' : 'Central Differential',
-            'uuid' : None,
-            'peaks' : False,
-            'sampling_freq' : 100
-        }
+        self.update_view_callback = update_view_callback
 
-    def process(self, signal):
-        ''' Executes the process block'''
-        return CarePackage.central_diff(signal, self.options['sampling_freq'])
+        self.setup_UI()
+
+    def setup_UI(self):
+        '''Sets up the option panel'''
+        for block in self.info:
+            self.option_viewer.add_block_UI(block, self.update_option, self.option_panel_return_block_callback)
+
+    def update_option(self, block, option, value):
+        '''Used to update info in the process blocks'''
+        if isinstance(block.info[option], bool):
+            block.info[option] = bool(value)
+        else:
+            block.info[option] = value 
+
+    def option_panel_return_block_callback(self, block):
+        '''Gets a copy of the process block from the option panel and passes it to the pipeline'''
+        if self.pipeline_model is not None:
+            newObject = copy.deepcopy(block)
+            self.pipeline_model.add_process_block(newObject)
+        
+        self.update_view_callback()
+
+    def remove_by_id(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
+
+    def move_filter_up(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
+
+    def move_filter_down(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
+
+    def open_filter_settings(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
 
 #################################################################################
 
@@ -114,13 +170,13 @@ class OptionPanelViewer(QWidget):
         blockLayout = QVBoxLayout(blockContainer)
 
         # Add a label
-        nameLabel = QLabel(block.options['name'])
+        nameLabel = QLabel(block.info['name'])
         nameLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         blockLayout.addWidget(nameLabel)
 
         # Add the UI Element's modifyable properties
-        for option, value in block.options.items():
+        for option, value in block.info.items():
             if option in ['name', 'uuid', 'sampling_freq']:
                 continue
             
@@ -174,116 +230,3 @@ class OptionPanelViewer(QWidget):
         # Add styles to customize appearance
 
         layout.addWidget(optionContainer)
-
-############################################################################
-
-class PipelineController:
-    def __init__ (self, sampling_rate, option_viewer=None, pipeline_model=None, update_view_callback=None):
-        self.starting_point = None
-
-        self.options = [
-            PS(),
-            FIR(),
-            CD(),
-            MWI(),
-            FPD(),
-        ]
-
-        self.pipeline_model = pipeline_model
-        self.option_viewer = option_viewer
-
-        self.update_view_callback = update_view_callback
-
-        self.setup_UI()
-
-    def setup_UI(self):
-        '''Sets up the option panel and the pipeline viewer'''
-        for block in self.options:
-            self.option_viewer.add_block_UI(block, self.update_option, self.option_panel_return_block_callback)
-
-    def update_option(self, block, option, value):
-        '''Used to update options in the process blocks'''
-        if isinstance(block.options[option], bool):
-            block.options[option] = bool(value)
-        else:
-            block.options[option] = value 
-
-    def option_panel_return_block_callback(self, block):
-        '''Gets a copy of the process block from the option panel and passes it to the pipeline'''
-        if self.pipeline_model is not None:
-            newObject = copy.deepcopy(block)
-            self.pipeline_model.add_process_block(newObject)
-        
-        self.update_view_callback()
-
-    def remove_by_id(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
-
-    def move_filter_up(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
-
-    def move_filter_down(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
-
-    def open_filter_settings(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
-
-
-class PipelineModel:
-    def __init__(self):
-        self.pipeline = []
-
-    def add_process_block(self, process_block):
-        """Adds a new process block to the pipeline"""
-        new_block = process_block
-        new_block.options['uuid'] = uuid.uuid4()    # Create a new uuid for the block
-
-        # The block to the pipeline and set its next filter
-        if self.pipeline:
-            self.pipeline[-1].set_next_filter(new_block)
-        
-        self.pipeline.append(process_block)
-
-    def remove_by_id(self, id):
-        ''' Remove an element by its ID'''
-        for filter_idx in range(len(self.pipeline)):
-            if self.pipeline[filter_idx]['uuid'] == id:
-                del self.pipeline[filter_idx]
-
-    def move_filter_up(self, id):
-        """Move the Block up the pipeline"""
-        index = 0
-        for i in range(len(self.pipeline)):
-            if self.pipeline[i]['uuid'] == id:
-                index = i
-
-        # Swap the elements
-        if len(self.pipeline) > 1 and index > 0:
-            self.pipeline[index], self.pipeline[index - 1] = self.pipeline[index - 1], self.pipeline[index]
-        
-    def move_filter_down(self, id):
-        index = 0
-        for i in range(len(self.pipeline)):
-            if self.pipeline[i]['uuid'] == id:
-                index = i
-
-        # Swap the elements:
-        if len(self.pipeline) > 1 and index < len(self.pipeline) - 1:
-            self.pipeline[index], self.pipeline[index + 1] = self.pipeline[index + 1], self.pipeline[index]
-    
-    def open_filter_settings(self, id):
-        pass
-        
-    def process_signal(self, signalPlotController, signal):
-        signalPlotController.reset_signals()
-        signalPlotController.add_signal(signal, "Base Signal", [])
-        for p in self.pipeline:
-            signal = p.process(signal)
-            signalPlotController.add_signal(signal, 
-                                    p.get_options()['name'], 
-                                    CarePackage.detect_peak(signal, 0.65) if p.get_options()['peaks'] else [])            
-

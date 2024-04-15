@@ -52,9 +52,7 @@ class MainWindow(QMainWindow):
         
         ### Signal Plotter
 
-        self.signalModel = SignalPlotModel()
-        self.signalView = SignalPlotView(               model=self.signalModel,
-                                                        pipeline_controller=self.pipelineController)
+        self.signalView = SignalPlotView(               pipeline_controller=self.pipelineController)
         self.signalController = SignalPlotController(   model=self.signalModel, 
                                                         view=self.signalView)
         
