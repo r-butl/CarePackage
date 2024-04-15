@@ -1,25 +1,62 @@
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QScrollArea, QSizePolicy, QSpacerItem
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QScrollArea, QSizePolicy, QSpacerItem, QHBoxLayout, QPushButton
 
 class IndividualPlotView(FigureCanvas):
-    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000]):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        if signal is not None:
+    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], controller=None, id=None):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)           
+        super().__init__(self.fig)
+        self.setParent(parent)
+        self.controller = controller
+        self.block_id = id
+
+        self.axes = self.fig.add_subplot(111)
+        if signal:
             self.axes.plot(range(len(signal)), signal, label=label)
             self.axes.set_xlim(xlim)
             for index in indices:
                 self.axes.axvline(x=index, color='r', linestyle='-')
             if label:
                 self.axes.set_title(label)
-        super().__init__(fig)
-        self.setParent(parent)
 
         # Set a fixed height for the plot
-        pixelsPerInch = dpi
-        fixedHeightInPixels = height * pixelsPerInch
-        self.setFixedHeight(fixedHeightInPixels)
+        self.setFixedHeight(height * dpi)
+
+        self.init_controls()
+
+    def init_controls(self):
+        layout = QHBoxLayout()
+        move_up_button = QPushButton("Move Up")
+        move_up_button.clicked.connect(self.move_up)
+        move_down_button = QPushButton("Move Down")
+        move_down_button.clicked.connect(self.move_down)
+        remove = QPushButton("Remove")
+        remove.clicked.connect(self.remove_filter)
+        options = QPushButton("Options")
+        options.clicked.connect(self.open_settings)
+
+        layout.addWidget(move_up_button)
+        layout.addWidget(move_down_button)
+        layout.addWidget(remove)
+        layout.addWidget(options)
+
+        self.layout().addLayout(layout)
+
+    def move_up(self):
+        if self.controller:
+            self.controller.move_filter_up(self.block_id)
+
+    def move_down(self):
+        if self.controller:
+            self.controller.move_filter_down(self.block_id)
+    
+    def remove_filter(self):
+        if self.controller:
+            self.controller.remove_by_id(self.block_id)
+
+    def open_settings(self):
+        if self.controller:
+            self.controller.open_filter_settings(self.block_id)
 
 class SignalPlotModel:
     def __init__(self):
@@ -41,9 +78,10 @@ class SignalPlotModel:
         self.indices = []
 
 class SignalPlotView(QWidget):
-    def __init__(self, model, parent=None):
+    def __init__(self, model, pipeline_controller, parent=None):
         super().__init__(parent)
         self.model = model
+        self.pipeline_controller = pipeline_controller
 
         self.initUI()
         self.display_signals()
@@ -86,12 +124,17 @@ class SignalPlotView(QWidget):
     def display_signals(self):
         
         self.clearLayout(self.plotLayout)
+        individual_signal_container = QWidget()
+        individual_signal_layout = QHBoxLayout(individual_signal_container)
 
         # Create individual plots for each signal
         for i in range(len(self.model.signals)):
             plotView = IndividualPlotView(parent=None,  signal=self.model.signals[i],
                                           label=self.model.labels[i], indices=self.model.indices[i],
-                                          xlim=self.model.xlim)
+                                          xlim=self.model.xlim, controller=self.pipeline_controller )
+            
+            individual_signal_layout.addWidget(plotView)
+            
             self.plotLayout.addWidget(plotView)
         
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)

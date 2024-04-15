@@ -47,14 +47,14 @@ class MainWindow(QMainWindow):
         self.pipelineModel = PipelineModel()
         self.pipelineController = PipelineController(   sampling_rate=self.dataController.sampling_freq,  
                                                         option_viewer=self.optionPanelViewer, 
-                                                        pipeline_viewer=None, 
                                                         pipeline_model=self.pipelineModel,
                                                         update_view_callback=self.update_signal_view)
         
         ### Signal Plotter
 
         self.signalModel = SignalPlotModel()
-        self.signalView = SignalPlotView(               model=self.signalModel)
+        self.signalView = SignalPlotView(               model=self.signalModel,
+                                                        pipeline_controller=self.pipelineController)
         self.signalController = SignalPlotController(   model=self.signalModel, 
                                                         view=self.signalView)
         
@@ -72,10 +72,6 @@ class MainWindow(QMainWindow):
         # New Signal Button
         self.newSignalButton = QPushButton("New Signal", self)
         self.newSignalButton.clicked.connect(self.on_click_new_signal)
-
-        # Remove Latest Filter Button
-        self.removeFilterButton = QPushButton("Remove Last Filter", self)
-        self.removeFilterButton.clicked.connect(self.pipelineController.remove_last_filter)
 
         ##################################################### 
 
@@ -105,7 +101,6 @@ class MainWindow(QMainWindow):
 
         # Left Panel
         leftPanel.addWidget(self.optionPanelViewer)
-        leftPanel.addWidget(self.removeFilterButton)
 
         # Center Panel
         centerPanel.addWidget(self.signalView)
@@ -116,7 +111,6 @@ class MainWindow(QMainWindow):
         controlPanelLayout.addWidget(self.newSignalButton)
 
         centerPanel.addWidget(self.controlPanelGroup)
-
 
         # All together now
         topLevelLayout.addWidget(leftPanelContainer,1)

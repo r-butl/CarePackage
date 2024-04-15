@@ -178,7 +178,7 @@ class OptionPanelViewer(QWidget):
 ############################################################################
 
 class PipelineController:
-    def __init__ (self, sampling_rate, option_viewer=None, pipeline_viewer=None, pipeline_model=None, update_view_callback=None):
+    def __init__ (self, sampling_rate, option_viewer=None, pipeline_model=None, update_view_callback=None):
         self.starting_point = None
 
         self.options = [
@@ -190,7 +190,6 @@ class PipelineController:
         ]
 
         self.pipeline_model = pipeline_model
-        self.pipeline_viewer = pipeline_viewer
         self.option_viewer = option_viewer
 
         self.update_view_callback = update_view_callback
@@ -217,11 +216,23 @@ class PipelineController:
         
         self.update_view_callback()
 
-    def remove_last_filter(self):
-        self.pipeline_model.remove_process_block()
-
+    def remove_by_id(self, id):
+        self.pipeline_model.remove_by_id(id)
         self.update_view_callback()
-    
+
+    def move_filter_up(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
+
+    def move_filter_down(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
+
+    def open_filter_settings(self, id):
+        self.pipeline_model.remove_by_id(id)
+        self.update_view_callback()
+
+
 class PipelineModel:
     def __init__(self):
         self.pipeline = []
@@ -237,13 +248,35 @@ class PipelineModel:
         
         self.pipeline.append(process_block)
 
-    def remove_process_block(self):
-        '''Removes the latest signal processing block'''
-        if len(self.pipeline) > 0:
-            del self.pipeline[-1]       # Remove the last process block
+    def remove_by_id(self, id):
+        ''' Remove an element by its ID'''
+        for filter_idx in range(len(self.pipeline)):
+            if self.pipeline[filter_idx]['uuid'] == id:
+                del self.pipeline[filter_idx]
 
-        if len(self.pipeline) > 0:
-            self.pipeline[-1].remove_next_filter()  # Remove the next filter pointer from the last process block
+    def move_filter_up(self, id):
+        """Move the Block up the pipeline"""
+        index = 0
+        for i in range(len(self.pipeline)):
+            if self.pipeline[i]['uuid'] == id:
+                index = i
+
+        # Swap the elements
+        if len(self.pipeline) > 1 and index > 0:
+            self.pipeline[index], self.pipeline[index - 1] = self.pipeline[index - 1], self.pipeline[index]
+        
+    def move_filter_down(self, id):
+        index = 0
+        for i in range(len(self.pipeline)):
+            if self.pipeline[i]['uuid'] == id:
+                index = i
+
+        # Swap the elements:
+        if len(self.pipeline) > 1 and index < len(self.pipeline) - 1:
+            self.pipeline[index], self.pipeline[index + 1] = self.pipeline[index + 1], self.pipeline[index]
+    
+    def open_filter_settings(self, id):
+        pass
         
     def process_signal(self, signalPlotController, signal):
         signalPlotController.reset_signals()
@@ -254,13 +287,3 @@ class PipelineModel:
                                     p.get_options()['name'], 
                                     CarePackage.detect_peak(signal, 0.65) if p.get_options()['peaks'] else [])            
 
-class PipelineViewer(QWidget):
-    def __init__(self, controller):
-        super().__init__()
-        self.controller = controller
-        self.initUI()
-
-    def initUI(self):
-        self.layout = QVBoxLayout()
-        self.pipelineDisplay = QLabel("Pipeline Configuration")
-        self.layout.addWidget(self.pipelineDisplay)
