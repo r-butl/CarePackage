@@ -8,13 +8,20 @@ from PyQt5.QtWidgets import (QVBoxLayout,
                              QHBoxLayout, 
                              QPushButton)
 
-class IndividualPlotView(FigureCanvas):
-    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], controller=None, id=None):
+class IndividualPlotView(QWidget):
+    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], model=None, id=None):
         self.fig = Figure(figsize=(width, height), dpi=dpi)           
-        super().__init__(self.fig)
-        self.setParent(parent)
-        self.controller = controller
+        super().__init__(parent)
+
+        self.model = model
         self.block_id = id
+
+
+        # Create the figure and canvas
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.canvas = FigureCanvas(self.fig)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.updateGeometry()
 
         self.axes = self.fig.add_subplot(111)
         self.line = None    # Plot line
@@ -24,7 +31,21 @@ class IndividualPlotView(FigureCanvas):
         # Set a fixed height for the plot
         self.setFixedHeight(height * dpi)
 
-        self.init_controls()
+        # Create the main layout
+        layout = QHBoxLayout()
+
+        # Create the controls widget
+        self.control_widget = QWidget()
+        controls_layout = QVBoxLayout()
+        self.control_widget.setLayout(controls_layout)
+        self.init_controls(controls_layout)
+
+        # Add widgets to main layout
+        layout.addWidget(self.canvas)
+        layout.addWidget(self.control_widget)
+
+        self.setLayout(layout)
+
 
     def initialize_plot(self, signal, label, indices, xlim):
         """Initial the plot"""
@@ -45,7 +66,7 @@ class IndividualPlotView(FigureCanvas):
                                 
         if new_indices is not None:
             # Remove old indicies
-            for line in self.indices_lines:
+            for line in self.indicies_lines:
                 line.remove()
             self.indicies_lines.clear()
 
@@ -56,51 +77,55 @@ class IndividualPlotView(FigureCanvas):
 
         self.fig.canvas.draw_idle()     # redraw the plot
 
-    def init_controls(self):
+    def init_controls(self, controls_layout):
         """If related to a process block, then  add controls, otherwise don't"""
-        if self.controller:
-            layout = QHBoxLayout()
+        if self.model:
             move_up_button = QPushButton("Move Up")
             move_up_button.clicked.connect(self.move_up)
+
             move_down_button = QPushButton("Move Down")
             move_down_button.clicked.connect(self.move_down)
+
             remove = QPushButton("Remove")
             remove.clicked.connect(self.remove_filter)
+
             options = QPushButton("Options")
             options.clicked.connect(self.open_settings)
 
-            layout.addWidget(move_up_button)
-            layout.addWidget(move_down_button)
-            layout.addWidget(remove)
-            layout.addWidget(options)
-
-            self.layout().addLayout(layout)
+            controls_layout.addWidget(move_up_button)
+            controls_layout.addWidget(move_down_button)
+            controls_layout.addWidget(remove)
+            controls_layout.addWidget(options)
 
     def move_up(self):
-        if self.controller:
-            self.controller.move_filter_up(self.block_id)
+        if self.model:
+            self.model.move_filter_up(self.block_id)
 
     def move_down(self):
-        if self.controller:
-            self.controller.move_filter_down(self.block_id)
+        if self.model:
+            self.model.move_filter_down(self.block_id)
     
     def remove_filter(self):
-        if self.controller:
-            self.controller.remove_by_id(self.block_id)
+        if self.model:
+            self.model.remove_by_id(self.block_id)
 
     def open_settings(self):
-        if self.controller:
-            self.controller.open_filter_settings(self.block_id)
+        if self.model:
+            self.model.open_filter_settings(self.block_id)
 
 class PipelineViewer(QWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, model=None):
         super().__init__(parent)
+        self.model = model
+        self.plotViews = {}     # block id to plot view mapping
 
-        self.initUI()
-        self.display_signals()
+        self.init_UI()
+        self.update()
 
-    def initUI(self):
+        self.model.set_observer(self)   # Register as an observer
+
+    def init_UI(self):
         self.scrollArea = QScrollArea(self)
         self.scrollArea.setWidgetResizable(True)
 
@@ -120,12 +145,13 @@ class PipelineViewer(QWidget):
         # Ensure the scroll area expands fully within SignalPlotView
         self.scrollArea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
 
-    def clearLayout(self, layout):
+    def clear_layout(self, layout):
         while layout.count():
             item = layout.takeAt(0)   # take the first item in the layout
             widget = item.widget()
             if widget:
-                widget.deleteLater()
+                widget.hide()
+                widget.setParent(None)
             else:
                 # Recursively clear any nested layouts
                 nestedLayout = item.layout()
@@ -135,26 +161,51 @@ class PipelineViewer(QWidget):
                 else:
                     del item
 
-    def add_element(self, new_element):
+    def update(self):
         
-    
-    def display_signals(self):
-        
-        self.clearLayout(self.plotLayout)
-        individual_signal_container = QWidget()
-        individual_signal_layout = QHBoxLayout(individual_signal_container)
+        self.clear_layout(self.plotLayout)
+        #self.clean_up()
 
         # Create individual plots for each signal
-        for i in range(len(self.model.signals)):
-            plotView = IndividualPlotView(parent=None,  signal=self.model.signals[i],
-                                          label=self.model.labels[i], indices=self.model.indices[i],
-                                          xlim=self.model.xlim, controller=self.pipeline_controller )
-            
-            individual_signal_layout.addWidget(plotView)
-            
+        curr = self.model.pipeline_start
+
+        while curr:
+            plotView = self.plotViews.get(curr.info['uuid'])
+            if plotView is None:
+                #Create the view
+                plotView = IndividualPlotView(parent=self.plotContainerWidget,
+                                              signal=curr.signal,
+                                              label=curr.info['name'],
+                                              indices=curr.indicies,
+                                              xlim=[0, 1000],
+                                              model=self.model,
+                                              id=curr.info['uuid'])
+                self.plotViews[curr.info['uuid']] = plotView
+                curr.add_observer(plotView)
+            else:
+                plotView.show()
+            print(plotView)
             self.plotLayout.addWidget(plotView)
+
+            curr = curr.next_filter
         
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.plotLayout.addSpacerItem(spacer)
+
+    def clean_up(self):
+
+        uuids = []
+        
+        curr = self.model.pipeline_start
+        if curr:
+            while curr:
+                uuids.append(curr.info['uuid'])
+                curr = curr.next_filter
+
+            for k in self.plotViews.keys():
+                if k not in uuids:
+                    del self.plotViews[k]
+        
+
 
 

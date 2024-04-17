@@ -41,11 +41,11 @@ class MainWindow(QMainWindow):
                                                         path=self.path)
 
         ### Pipeline Construction 
-
         self.pipelineModel = PipelineModel()
-        
+
         self.optionPanelViewer = OptionPanelViewer()
-        self.pipelineViewer = PipelineViewer()
+        self.pipelineViewer = PipelineViewer(model = self.pipelineModel)
+
 
         self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
                                                         pipeline_viewer=self.pipelineViewer, 
@@ -86,11 +86,8 @@ class MainWindow(QMainWindow):
         rightPanelContainer = QWidget()
         rightPanel = QVBoxLayout(rightPanelContainer)
 
-
         self.controlPanelGroup = QGroupBox("Control Panel")
         controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
-
-
 
         #####################################################  Layout
 
@@ -111,8 +108,10 @@ class MainWindow(QMainWindow):
         topLevelLayout.addWidget(leftPanelContainer,1)
         topLevelLayout.addWidget(centerPanelContainer, 4)
 
+
+        
+
     def on_click_new_signal(self):
-        self.signalController.reset_signals()
         self.current_signal = self.dataController.give_signal()
         self.update_signal_view(self.current_signal)
 
@@ -120,8 +119,7 @@ class MainWindow(QMainWindow):
         if signal is None:
             signal = self.current_signal
 
-        self.pipelineModel.process_signal(self.signalController, signal)
-        self.signalView.display_signals()
+        self.pipelineModel.process_signal(signal)
 
     def apply_sample_change(self):
         #self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline

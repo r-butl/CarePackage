@@ -12,27 +12,32 @@ class PipelineModel:
 
     def __init__(self):
         self.pipeline_start = None
-        self.blocks = []
+        self.current_signal = []
 
     def add_process_block(self, process_block):
         """Adds a new process block to the pipeline"""
-        new_block = process_block
-        new_block.info['uuid'] = uuid.uuid4()    # Create a new uuid for the block
+        newBlock = process_block
+        newBlock.info['uuid'] = uuid.uuid4()    # Create a new uuid for the block
 
         # The block to the pipeline and set its next filter
         if self.pipeline_start == None:
-            self.pipeline_start = new_block
+            self.pipeline_start = newBlock
         else:
             # Find the end of the graph and append the block there
             curr = self.pipeline_start
             while curr != None:
                 if curr.next_filter == None:
-                    curr.next_filter = new_block
+                    curr.next_filter = newBlock
                     break
                 curr = curr.next_filter
-        
-        # Put it in the list
-        self.blocks.append(new_block)
+        self.notify_observers()
+
+    def print_pipeline(self):
+        curr = self.pipeline_start
+
+        while curr:
+            print(curr.info['uuid'])
+            curr = curr.next_filter
 
     def remove_by_id(self, id):
         ''' Remove an element by its ID'''
@@ -53,47 +58,94 @@ class PipelineModel:
                 prev = curr
                 curr = curr.next_filter
 
+        self.notify_observers()
+
     def move_filter_up(self, id):
         """Move the Block up the pipeline"""
 
-        #       0 -> 1 -> 2
-        #           1. Set 2 pointing to 1
-        #       
-        target = self.pipeline_start
+        # exit if the head node is the target, or if they don't exist
+        if self.pipeline_start is None or self.pipeline_start.next_filter is None:
+            return
+        
         prev = None
-        print("ACTION: move filter up")
-        
-        # while curr is not None and curr.next_filter != None:
-        #     if curr.next_filter.info['uuid'] == id:
-        #         if prev == None:
-        #             # We are currently at the head of the pipeline
-                    
-        #         else:
-        #             if 
+        curr = self.pipeline_start
 
-        #         return
-        #     else:
-        #         prev = curr
-        #         curr = curr.next_filter
+        # Node to swap is the second node in the list
+        if curr.next_filter.info['uuid'] == id:
+            second = self.pipeline_start.next_filter
+            self.pipeline_start.next_filter = second.next_filter
+            second.next_filter = self.pipeline_start
+            self.pipeline_start = second
+            self.notify_observers()
+            return
 
-        
+        # Start on the second node
+        prev = self.pipeline_start
+        curr = self.pipeline_start.next_filter
+
+        while curr and curr.next_filter:
+            # iF the next node is our target, preform the swap
+            if curr.next_filter.info['uuid'] == id:
+                target = curr.next_filter
+                curr.next_filter = target.next_filter
+                target.next_filter = curr
+                prev.next_filter = target
+                self.notify_observers()
+                return
+            
+            prev = curr
+            curr = curr.next_filter
+
     def move_filter_down(self, id):
-        # index = 0
-        # for i in range(len(self.pipeline)):
-        #     if self.pipeline[i]['uuid'] == id:
-        #         index = i
-
-        # # Swap the elements:
-        # if len(self.pipeline) > 1 and index < len(self.pipeline) - 1:
-        print("ACTION: move filter down")
         
-        #     self.pipeline[index], self.pipeline[index + 1] = self.pipeline[index + 1], self.pipeline[index]
-    
+        # We need at least two blocks in the pipeline in order to work
+        if self.pipeline_start is None or self.pipeline_start.next_filter is None:
+            return
+        
+        prev = None
+        curr = self.pipeline_start
+
+        # Check if we are moving the head down
+        if curr.info['uuid'] == id:
+            target = self.pipeline_start
+            self.pipeline_start = target.next_filter
+            self.pipeline_start.next_filter = target
+            target.next_filter = None
+            self.notify_observers()
+            return
+
+        prev = self.pipeline_start
+        curr = prev.next_filter
+
+        while curr and curr.next_filter:
+            # if the current node is our target perform the swap
+            if curr.info['uuid'] == id:
+                target = curr.next_filter
+                curr.next_filter = target.next_filter
+                target.next_filter = curr
+                prev.next_filter = target
+                self.notify_observers()
+                return
+
+            prev = curr
+            curr = curr.next_filter
+
     def open_filter_settings(self, id):
         print("ACTION: Open option panel")
         
-    def process_signal(self, signalPlotController, signal):
-        pass           
+    def process_signal(self, signal):
+        self.current_signal = signal
+        if self.pipeline_start:
+            self.pipeline_start.process(self.current_signal)   
+
+    def set_observer(self, observer):
+        self.observer = observer
+
+    def notify_observers(self):
+        self.process_signal(self.current_signal)
+
+        if self.observer:
+            self.observer.update()
 
 #################################################################################
 
@@ -137,31 +189,7 @@ class PipelineController:
 
             # Add the element to the pipeline
             self.pipeline_model.add_process_block(newObject)
-
-            # Handling rending the object in the pipeline controller
-            self.
             
-        self.update_view_callback()
-
-    def remove_by_id(self, id):
-        self.pipeline_model.remove_by_id(id)
-        if self.update_view_callback == None:
-            self.update_view_callback()
-
-    def move_filter_up(self, id):
-        self.pipeline_model.move_filter_up(id)
-        if self.update_view_callback == None:
-            self.update_view_callback()
-
-    def move_filter_down(self, id):
-        self.pipeline_model.move_filter_down(id)
-        if self.update_view_callback == None:
-            self.update_view_callback()
-
-    def open_filter_settings(self, id):
-        self.pipeline_model.open_filter_settings(id)
-        if self.update_view_callback == None:
-            self.update_view_callback()
 
 #################################################################################
 
