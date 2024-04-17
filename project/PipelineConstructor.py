@@ -61,47 +61,44 @@ class PipelineModel:
         #       
         target = self.pipeline_start
         prev = None
-
-        while curr is not None and curr.next_filter != None:
-            if curr.next_filter.info['uuid'] == id:
-                if prev == None:
-                    # We are currently at the head of the pipeline
+        print("ACTION: move filter up")
+        
+        # while curr is not None and curr.next_filter != None:
+        #     if curr.next_filter.info['uuid'] == id:
+        #         if prev == None:
+        #             # We are currently at the head of the pipeline
                     
-                else:
-                    if 
+        #         else:
+        #             if 
 
-                return
-            else:
-                prev = curr
-                curr = curr.next_filter
+        #         return
+        #     else:
+        #         prev = curr
+        #         curr = curr.next_filter
 
         
     def move_filter_down(self, id):
-        index = 0
-        for i in range(len(self.pipeline)):
-            if self.pipeline[i]['uuid'] == id:
-                index = i
+        # index = 0
+        # for i in range(len(self.pipeline)):
+        #     if self.pipeline[i]['uuid'] == id:
+        #         index = i
 
-        # Swap the elements:
-        if len(self.pipeline) > 1 and index < len(self.pipeline) - 1:
-            self.pipeline[index], self.pipeline[index + 1] = self.pipeline[index + 1], self.pipeline[index]
+        # # Swap the elements:
+        # if len(self.pipeline) > 1 and index < len(self.pipeline) - 1:
+        print("ACTION: move filter down")
+        
+        #     self.pipeline[index], self.pipeline[index + 1] = self.pipeline[index + 1], self.pipeline[index]
     
     def open_filter_settings(self, id):
-        pass
+        print("ACTION: Open option panel")
         
     def process_signal(self, signalPlotController, signal):
-        signalPlotController.reset_signals()
-        signalPlotController.add_signal(signal, "Base Signal", [])
-        for p in self.pipeline:
-            signal = p.process(signal)
-            signalPlotController.add_signal(signal, 
-                                    p.get_info()['name'], 
-                                    CarePackage.detect_peak(signal, 0.65) if p.get_info()['peaks'] else [])            
+        pass           
 
 #################################################################################
 
 class PipelineController:
-    def __init__ (self, sampling_rate, option_viewer=None, pipeline_model=None, update_view_callback=None):
+    def __init__ (self, option_viewer=None, pipeline_viewer=None, pipeline_model=None, update_view_callback=None):
         self.starting_point = None
 
         self.info = [
@@ -113,7 +110,9 @@ class PipelineController:
         ]
 
         self.pipeline_model = pipeline_model
+
         self.option_viewer = option_viewer
+        self.pipeline_viewer = pipeline_viewer
 
         self.update_view_callback = update_view_callback
 
@@ -135,25 +134,34 @@ class PipelineController:
         '''Gets a copy of the process block from the option panel and passes it to the pipeline'''
         if self.pipeline_model is not None:
             newObject = copy.deepcopy(block)
+
+            # Add the element to the pipeline
             self.pipeline_model.add_process_block(newObject)
-        
+
+            # Handling rending the object in the pipeline controller
+            self.
+            
         self.update_view_callback()
 
     def remove_by_id(self, id):
         self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
+        if self.update_view_callback == None:
+            self.update_view_callback()
 
     def move_filter_up(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
+        self.pipeline_model.move_filter_up(id)
+        if self.update_view_callback == None:
+            self.update_view_callback()
 
     def move_filter_down(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
+        self.pipeline_model.move_filter_down(id)
+        if self.update_view_callback == None:
+            self.update_view_callback()
 
     def open_filter_settings(self, id):
-        self.pipeline_model.remove_by_id(id)
-        self.update_view_callback()
+        self.pipeline_model.open_filter_settings(id)
+        if self.update_view_callback == None:
+            self.update_view_callback()
 
 #################################################################################
 

@@ -13,7 +13,6 @@ from PyQt5.QtWidgets import     (QApplication,
                                 QGroupBox,
                                 QComboBox,
                                 QLabel,
-                                QSizePolicy
                                 )
 
 from SignalPlotter import *
@@ -43,18 +42,16 @@ class MainWindow(QMainWindow):
 
         ### Pipeline Construction 
 
-        self.optionPanelViewer = OptionPanelViewer()
         self.pipelineModel = PipelineModel()
-        self.pipelineController = PipelineController(   sampling_rate=self.dataController.sampling_freq,  
-                                                        option_viewer=self.optionPanelViewer, 
+        
+        self.optionPanelViewer = OptionPanelViewer()
+        self.pipelineViewer = PipelineViewer()
+
+        self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
+                                                        pipeline_viewer=self.pipelineViewer, 
                                                         pipeline_model=self.pipelineModel,
                                                         update_view_callback=self.update_signal_view)
         
-        ### Signal Plotter
-
-        self.signalView = SignalPlotView(               pipeline_controller=self.pipelineController)
-        self.signalController = SignalPlotController(   model=self.signalModel, 
-                                                        view=self.signalView)
         
         ################################################# Utilities Definition
 
@@ -101,7 +98,7 @@ class MainWindow(QMainWindow):
         leftPanel.addWidget(self.optionPanelViewer)
 
         # Center Panel
-        centerPanel.addWidget(self.signalView)
+        centerPanel.addWidget(self.pipelineViewer)
 
         controlPanelLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
         controlPanelLayout.addWidget(self.sampleSelect)

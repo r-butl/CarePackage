@@ -1,6 +1,12 @@
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QScrollArea, QSizePolicy, QSpacerItem, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import (QVBoxLayout, 
+                             QWidget, 
+                             QScrollArea, 
+                             QSizePolicy, 
+                             QSpacerItem, 
+                             QHBoxLayout, 
+                             QPushButton)
 
 class IndividualPlotView(FigureCanvas):
     def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], controller=None, id=None):
@@ -51,22 +57,24 @@ class IndividualPlotView(FigureCanvas):
         self.fig.canvas.draw_idle()     # redraw the plot
 
     def init_controls(self):
-        layout = QHBoxLayout()
-        move_up_button = QPushButton("Move Up")
-        move_up_button.clicked.connect(self.move_up)
-        move_down_button = QPushButton("Move Down")
-        move_down_button.clicked.connect(self.move_down)
-        remove = QPushButton("Remove")
-        remove.clicked.connect(self.remove_filter)
-        options = QPushButton("Options")
-        options.clicked.connect(self.open_settings)
+        """If related to a process block, then  add controls, otherwise don't"""
+        if self.controller:
+            layout = QHBoxLayout()
+            move_up_button = QPushButton("Move Up")
+            move_up_button.clicked.connect(self.move_up)
+            move_down_button = QPushButton("Move Down")
+            move_down_button.clicked.connect(self.move_down)
+            remove = QPushButton("Remove")
+            remove.clicked.connect(self.remove_filter)
+            options = QPushButton("Options")
+            options.clicked.connect(self.open_settings)
 
-        layout.addWidget(move_up_button)
-        layout.addWidget(move_down_button)
-        layout.addWidget(remove)
-        layout.addWidget(options)
+            layout.addWidget(move_up_button)
+            layout.addWidget(move_down_button)
+            layout.addWidget(remove)
+            layout.addWidget(options)
 
-        self.layout().addLayout(layout)
+            self.layout().addLayout(layout)
 
     def move_up(self):
         if self.controller:
@@ -84,11 +92,10 @@ class IndividualPlotView(FigureCanvas):
         if self.controller:
             self.controller.open_filter_settings(self.block_id)
 
-class SignalPlotView(QWidget):
-    def __init__(self, pipeline, pipeline_controller, parent=None):
+class PipelineViewer(QWidget):
+
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.pipeline = pipeline
-        self.pipeline_controller = pipeline_controller
 
         self.initUI()
         self.display_signals()
@@ -127,6 +134,9 @@ class SignalPlotView(QWidget):
                 # Remove spacer items or other non-widget items
                 else:
                     del item
+
+    def add_element(self, new_element):
+        
     
     def display_signals(self):
         
@@ -148,16 +158,3 @@ class SignalPlotView(QWidget):
         self.plotLayout.addSpacerItem(spacer)
 
 
-class SignalPlotController:
-    def __init__(self, model, view):
-        self.model = model
-        self.view = view
-
-    def add_signal(self, signal, label="", indices=None):
-        self.model.add_signal(signal, label, indices)
-
-    def display_signals(self):
-        self.view.plot_signals(self.model)
-
-    def reset_signals(self):
-        self.model.reset()
