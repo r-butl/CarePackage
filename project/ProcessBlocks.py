@@ -6,6 +6,17 @@
 
 import CarePackage
 from abc import ABC, abstractmethod
+from PyQt5.QtWidgets import (QWidget,
+                             QVBoxLayout,
+                             QPushButton,
+                             QSizePolicy,
+                             QHBoxLayout,
+                             QSpinBox,
+                             QCheckBox,
+                             QLabel,
+                             QDialog,
+                             QDialogButtonBox
+                             )
 
 class ProcessBlock(ABC):
 
@@ -14,8 +25,8 @@ class ProcessBlock(ABC):
         self.next_filter = None
         self.observers = []
         self.function = None
-        self.peaks = None
         self.signal = []
+        self.signal_prev_stage = []
         self.indicies = []
         self.initialize()
 
@@ -24,20 +35,27 @@ class ProcessBlock(ABC):
         """ Initialize subclass specific settings like function and info. """
         pass
 
-    def process(self, signal):
+    def process(self, signal=None):
         ''' Executes the process block'''
-        if self.function:
-            self.signal = self.function(signal)
+        print(f"Process called on {self.info['name']}")
+        if signal != None:
+            self.signal_prev_stage = signal
 
-        if self.peaks:
-            self.indices = CarePackage.detect_peak(signal, 0.65)
+        if self.signal_prev_stage or self.signal:
+            if self.function:
+                self.signal = self.function(self.signal_prev_stage)
 
-        # Send the signal information to the plots that are observing the process block
-        for observer in self.observers:
-            observer.update_signal(self.signal, self.indicies)
+            if self.info['peaks'] == True:
+                self.indicies = CarePackage.detect_peak(self.signal, 0.65)
+            else:
+                self.indicies = []
 
-        if self.next_filter:
-            self.next_filter.process(self.signal)
+            # Send the signal information to the plots that are observing the process block
+            for observer in self.observers:
+                observer.update_signal(self.signal, self.indicies)
+
+            if self.next_filter:
+                self.next_filter.process(self.signal)
         
         return
         
@@ -60,14 +78,124 @@ class ProcessBlock(ABC):
         if observer in self.observers:
             self.observers.remove(observer)
 
+    def update_info(self, option, value):
+        '''Used to update info in the process blocks'''
+
+        if option in self.info:
+            if isinstance(self.info[option], type(value) ):
+                self.info[option] = value
+            else:
+                print("ERROR: Process Block - Mismatch value for option")
+        else:
+            print("ERROR: Process Block - Option not in info panel.")
+        
+        self.process()
+
+    def create_option_ui(self, add_block_callback):
+        """Creates the UI for the process block in the option panel"""
+        blockContainer = QWidget()
+        blockLayout = QVBoxLayout(blockContainer)
+
+        name = QLabel(self.info['name'])
+        blockLayout.addWidget(name)
+
+        # Option button
+        optionButton = QPushButton("Config Block")
+        optionButton.clicked.connect(lambda: self.show_option_panel())
+        optionButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        blockLayout.addWidget(optionButton)
+
+        # Button for adding the block to the pipeline
+        addButton = QPushButton("Add")
+        addButton.clicked.connect(lambda: add_block_callback(self))
+        addButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        blockLayout.addWidget(addButton)
+
+        blockContainer.setStyleSheet("""
+            QFrame {
+                margin: 5px; 
+            }
+
+            QCheckBox, QSpinBox {
+                background-color: #f0f0f0; 
+            }
+        """)
+
+        return blockContainer
+
+    def show_option_panel(self):
+        """ Defines a popup window for the options panel"""
+
+        dialog = QDialog()
+        dialog.setWindowTitle("Confguration Options")
+
+        layout = QVBoxLayout(dialog)
+
+        for option, value in self.info.items():
+            if option in ['name', 'uuid', 'sampling_freq']:
+                continue
+            optionWidget = self._create_option_widget(option, value)
+            layout.addWidget(optionWidget)
+
+        dialog.setStyleSheet("""
+            QFrame {
+                margin: 5px; 
+            }
+
+            QCheckBox, QSpinBox {
+                background-c~olor: #f0f0f0; 
+            }
+        """)
+
+        applyButton = QDialogButtonBox(QDialogButtonBox.Apply)
+        applyButton.button(QDialogButtonBox.Apply).clicked.connect(dialog.accept) 
+        layout.addWidget(applyButton)
+
+        dialog.exec_()
+
+    def _create_option_widget(self, option, value):
+
+        optionWidget = None
+
+        # Check what data type the option is and set it accordingly
+        if isinstance(value, bool):
+            optionWidget = QCheckBox()
+            optionWidget.setChecked(value)
+            optionWidget.stateChanged.connect(lambda state, opt=option: self.update_info(opt, bool(state)))
+        elif isinstance(value, (int, float)):
+            optionWidget = QSpinBox()
+            optionWidget.setValue(value)
+            optionWidget.valueChanged.connect(lambda value, opt=option: self.update_info(opt, value))
+
+        # Create a container widget for the option
+        optionContainer = QWidget()
+        optionContainer.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
+
+        optionLayout = QHBoxLayout(optionContainer)
+        optionLabel = QLabel(option)
+        optionLayout.addWidget(optionLabel)
+        optionLayout.addWidget(optionWidget)
+
+        # Add styles to customize appearance
+        optionContainer.setStyleSheet("""
+            QFrame {
+                margin: 5px; 
+            }
+
+            QCheckBox, QSpinBox {
+                background-color: #f0f0f0; 
+            }
+        """)
+
+        return optionContainer
+
 
 class Pass(ProcessBlock):
     def initialize(self):  
         self.info = {
-            'name' : 'Buffer',
+            'name' : 'Base',
             'uuid' : None,
             'peaks' : False,
-            'coefs': []
         }
 
         self.function = lambda signal: signal
@@ -79,6 +207,7 @@ class FIR(ProcessBlock):
             'name' : 'FIR Filter',
             'uuid' : None,
             'peaks' : False,
+            'sampling_freq' : 100,
             'coefs': []
         }
 

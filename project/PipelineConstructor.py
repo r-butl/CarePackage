@@ -1,9 +1,17 @@
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QCheckBox, QSpinBox, QPushButton, QSizePolicy
+from PyQt5.QtWidgets import (   QWidget, 
+                                QVBoxLayout, 
+                                QLabel, 
+                                QHBoxLayout,
+                                QCheckBox,
+                                QSpinBox, 
+                                QPushButton,
+                                QSizePolicy,
+                                QScrollArea
+                            )
 import uuid
 import copy
 from ProcessBlocks import *
-import CarePackage
 
 #################################################################################
 
@@ -30,6 +38,7 @@ class PipelineModel:
                     curr.next_filter = newBlock
                     break
                 curr = curr.next_filter
+                
         self.notify_observers()
 
     def print_pipeline(self):
@@ -53,12 +62,11 @@ class PipelineModel:
                     prev.next_filter = curr.next_filter
                 
                 del curr
+                self.notify_observers()
                 return
             else:
                 prev = curr
                 curr = curr.next_filter
-
-        self.notify_observers()
 
     def move_filter_up(self, id):
         """Move the Block up the pipeline"""
@@ -71,7 +79,7 @@ class PipelineModel:
         curr = self.pipeline_start
 
         # Node to swap is the second node in the list
-        if curr.next_filter.info['uuid'] == id:
+        if curr.next_filter.info['uuid'] == id and curr.info['name'] != 'Base':
             second = self.pipeline_start.next_filter
             self.pipeline_start.next_filter = second.next_filter
             second.next_filter = self.pipeline_start
@@ -84,8 +92,9 @@ class PipelineModel:
         curr = self.pipeline_start.next_filter
 
         while curr and curr.next_filter:
+            # Ensure that we are not trying to swap the base signal
             # iF the next node is our target, preform the swap
-            if curr.next_filter.info['uuid'] == id:
+            if curr.next_filter.info['uuid'] == id :
                 target = curr.next_filter
                 curr.next_filter = target.next_filter
                 target.next_filter = curr
@@ -107,10 +116,12 @@ class PipelineModel:
 
         # Check if we are moving the head down
         if curr.info['uuid'] == id:
-            target = self.pipeline_start
-            self.pipeline_start = target.next_filter
-            self.pipeline_start.next_filter = target
-            target.next_filter = None
+            head = self.pipeline_start
+            next = self.pipeline_start.next_filter
+
+            head.next_filter = next.next_filter
+            next.next_filter = head
+            self.pipeline_start = next
             self.notify_observers()
             return
 
@@ -131,8 +142,14 @@ class PipelineModel:
             curr = curr.next_filter
 
     def open_filter_settings(self, id):
-        print("ACTION: Open option panel")
-        
+        curr = self.pipeline_start
+
+        while curr:
+            if curr.info["uuid"] == id:
+                curr.show_option_panel() 
+
+            curr = curr.next_filter    
+
     def process_signal(self, signal):
         self.current_signal = signal
         if self.pipeline_start:
@@ -154,6 +171,7 @@ class PipelineController:
         self.starting_point = None
 
         self.info = [
+            Pass(),
             PS(),
             FIR(),
             CD(),
@@ -162,18 +180,20 @@ class PipelineController:
         ]
 
         self.pipeline_model = pipeline_model
-
         self.option_viewer = option_viewer
         self.pipeline_viewer = pipeline_viewer
-
         self.update_view_callback = update_view_callback
-
         self.setup_UI()
+
+    def add_base_block(self):
+        '''create a Buffer block and Add it to the pipeline'''
+        baseBlock = Pass()
+        self.option_panel_return_block_callback(baseBlock)
 
     def setup_UI(self):
         '''Sets up the option panel'''
         for block in self.info:
-            self.option_viewer.add_block_UI(block, self.update_option, self.option_panel_return_block_callback)
+            self.option_viewer.add_block_UI(block, self.option_panel_return_block_callback)
 
     def update_option(self, block, option, value):
         '''Used to update info in the process blocks'''
@@ -190,7 +210,6 @@ class PipelineController:
             # Add the element to the pipeline
             self.pipeline_model.add_process_block(newObject)
             
-
 #################################################################################
 
 class OptionPanelViewer(QWidget):
@@ -199,70 +218,29 @@ class OptionPanelViewer(QWidget):
         self.container = QWidget(self)
 
         self.layout = QVBoxLayout(self.container)
+        self.init_UI()
 
-    def add_block_UI(self, block, update_option_callback, return_copy_callback):
+    def init_UI(self):
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
+
+        # Container for the options
+        self.optionContainerWidget = QWidget()
+        self.optionLayout = QVBoxLayout(self.optionContainerWidget)
+        self.scrollArea.setWidget(self.optionContainerWidget)
+
+        # Main layout for the option panel
+        mainLayout = QVBoxLayout(self)
+        mainLayout.addWidget(self.scrollArea)
+        self.setLayout(mainLayout)
+
+        # Set the Size Policy
+        self.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
+
+        self.scrollArea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
+
+    def add_block_UI(self, block, return_copy_callback):
         # Create a container for each block
-        blockContainer = QWidget()
-        blockLayout = QVBoxLayout(blockContainer)
+        blockUI = block.create_option_ui(return_copy_callback)
+        self.optionLayout.addWidget(blockUI)
 
-        # Add a label
-        nameLabel = QLabel(block.info['name'])
-        nameLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-
-        blockLayout.addWidget(nameLabel)
-
-        # Add the UI Element's modifyable properties
-        for option, value in block.info.items():
-            if option in ['name', 'uuid', 'sampling_freq']:
-                continue
-            
-            self._add_option_widget(option, value, block, blockLayout, update_option_callback)
-
-        # Apply style to customize appearance
-        blockContainer.setStyleSheet("""
-            QFrame {
-                margin: 5px; 
-            }
-            QLabel {
-                font-weight: bold;
-            }
-            QCheckBox, QSpinBox {
-                background-color: #f0f0f0; 
-            }
-        """)
-        
-        # Button for adding the block to the pipeline
-        addButton = QPushButton("Add")
-        addButton.clicked.connect(lambda: return_copy_callback(block))
-        addButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-        blockLayout.addWidget(addButton)
-
-        self.layout.addWidget(blockContainer)
-
-    def _add_option_widget(self, option, value, block, layout, update_option_callback):
-
-        optionWidget = None
-
-        # Check what data type the option is and set it accordingly
-        if isinstance(value, bool):
-            optionWidget = QCheckBox()
-            optionWidget.setChecked(value)
-            optionWidget.stateChanged.connect(lambda state, opt=option, blk=block: update_option_callback(blk, opt, state))
-        elif isinstance(value, (int, float)):
-            optionWidget = QSpinBox()
-            optionWidget.setValue(value)
-            optionWidget.valueChanged.connect(lambda value, opt=option, blk=block: update_option_callback(blk, opt, value))
-
-        # Create a container widget for the option
-        optionContainer = QWidget()
-        optionContainer.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
-
-        optionLayout = QHBoxLayout(optionContainer)
-        optionLabel = QLabel(option)
-        optionLayout.addWidget(optionLabel)
-        optionLayout.addWidget(optionWidget)
-
-        # Add styles to customize appearance
-
-        layout.addWidget(optionContainer)

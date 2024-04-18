@@ -4,7 +4,9 @@
 
 import sys
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import     (QApplication, 
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import     (
+                                QApplication, 
                                 QMainWindow, 
                                 QVBoxLayout, 
                                 QHBoxLayout,
@@ -18,6 +20,7 @@ from PyQt5.QtWidgets import     (QApplication,
 from SignalPlotter import *
 from PTBXLsource import *
 from PipelineConstructor import *
+from TopBar import *
 
 ###########################################################################################
 
@@ -26,7 +29,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("CarePackage")
-        self.setGeometry(100, 50, 1500, 1000)
+        self.setGeometry(100, 50, 1500, 800)
         self.current_signal = None
         
         ################################################## MVC defintions
@@ -52,7 +55,6 @@ class MainWindow(QMainWindow):
                                                         pipeline_model=self.pipelineModel,
                                                         update_view_callback=self.update_signal_view)
         
-        
         ################################################# Utilities Definition
 
         # Select Sample rate
@@ -72,16 +74,15 @@ class MainWindow(QMainWindow):
 
         centralWidget = QWidget(self)
         self.setCentralWidget(centralWidget)
+        topLevelLayout = QVBoxLayout(centralWidget)
+        
+        topBarContainer = TopMenuBar()
 
-        topLevelLayout = QHBoxLayout(centralWidget)
+        functionalViewWidget = QWidget()
+        functionalViewLayout = QHBoxLayout(functionalViewWidget)
 
         leftPanelContainer = QWidget()
-
         leftPanel = QVBoxLayout(leftPanelContainer)
-
-        centerPanelContainer = QWidget()
-
-        centerPanel = QVBoxLayout(centerPanelContainer)
 
         rightPanelContainer = QWidget()
         rightPanel = QVBoxLayout(rightPanelContainer)
@@ -90,26 +91,39 @@ class MainWindow(QMainWindow):
         controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
 
         #####################################################  Layout
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(12)
 
         # Left Panel
+        leftPanelLabel = QLabel("Process Block Options")
+        leftPanelLabel.setAlignment(Qt.AlignCenter)
+        leftPanelLabel.setFont(font)
+        leftPanel.addWidget(leftPanelLabel)
         leftPanel.addWidget(self.optionPanelViewer)
 
-        # Center Panel
-        centerPanel.addWidget(self.pipelineViewer)
+        # Right Panel
+        rightPanelLabel = QLabel("Pipeline Viewer")
+        rightPanelLabel.setAlignment(Qt.AlignCenter)
+        rightPanelLabel.setFont(font)
+        rightPanel.addWidget(rightPanelLabel)
+        rightPanel.addWidget(self.pipelineViewer)
 
         controlPanelLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
         controlPanelLayout.addWidget(self.sampleSelect)
         controlPanelLayout.addWidget(self.sampleChange)
         controlPanelLayout.addWidget(self.newSignalButton)
+        rightPanel.addWidget(self.controlPanelGroup)
 
-        centerPanel.addWidget(self.controlPanelGroup)
+        # Functional Panel
+        functionalViewLayout.addWidget(leftPanelContainer,1)
+        functionalViewLayout.addWidget(rightPanelContainer, 4)
 
-        # All together now
-        topLevelLayout.addWidget(leftPanelContainer,1)
-        topLevelLayout.addWidget(centerPanelContainer, 4)
+        # Top Level
+        topLevelLayout.addWidget(topBarContainer)
+        topLevelLayout.addWidget(functionalViewWidget)
 
 
-        
 
     def on_click_new_signal(self):
         self.current_signal = self.dataController.give_signal()
