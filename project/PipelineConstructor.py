@@ -160,18 +160,16 @@ class PipelineModel:
 
     def notify_observers(self):
         self.process_signal(self.current_signal)
-
         if self.observer:
             self.observer.update()
 
 #################################################################################
 
 class PipelineController:
-    def __init__ (self, option_viewer=None, pipeline_viewer=None, pipeline_model=None, update_view_callback=None):
+    def __init__ (self, option_viewer=None, pipeline_viewer=None, pipeline_model=None):
         self.starting_point = None
 
-        self.info = [
-            Pass(),
+        self.options = [
             PS(),
             FIR(),
             CD(),
@@ -182,7 +180,6 @@ class PipelineController:
         self.pipeline_model = pipeline_model
         self.option_viewer = option_viewer
         self.pipeline_viewer = pipeline_viewer
-        self.update_view_callback = update_view_callback
         self.setup_UI()
 
     def add_base_block(self):
@@ -192,7 +189,7 @@ class PipelineController:
 
     def setup_UI(self):
         '''Sets up the option panel'''
-        for block in self.info:
+        for block in self.options:
             self.option_viewer.add_block_UI(block, self.option_panel_return_block_callback)
 
     def update_option(self, block, option, value):

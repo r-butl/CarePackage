@@ -37,13 +37,13 @@ def attentuation(reduction_percentage):
 def give_coefs(sample_freq):
     # https://www.allaboutcircuits.com/technical-articles/design-examples-of-fir-filters-using-window-method/
 
-    band_pass = True
+    band_pass = False
     lower_pass_band = convert_to_digital(0, sample_freq)         # hz
     lower_stop_band = convert_to_digital(7, sample_freq)         # hx
     lower_corner = (lower_stop_band + lower_pass_band) / 2
 
-    upper_pass_band = convert_to_digital(12, sample_freq)         # hz
-    upper_stop_band = convert_to_digital(22, sample_freq)         # hx
+    upper_pass_band = convert_to_digital(22, sample_freq)         # hz
+    upper_stop_band = convert_to_digital(12, sample_freq)         # hx
     upper_corner = (upper_stop_band + upper_pass_band) / 2
 
     delta_2 = attentuation(.7)    # Stop band reduction

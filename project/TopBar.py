@@ -37,15 +37,10 @@ class TopMenuBar(QWidget):
         exitAction.triggered.connect(self.exitApp)
         fileMenu.addAction(exitAction)
 
-        # Edit Menu
-        editMenu = self.menuBar.addMenu('Edit')
-        undoAction = QAction('Undo', self)
-        editMenu.addAction(undoAction)
-
-        # View Menu
-        viewMenu = self.menuBar.addMenu('View')
-        toggleAction = QAction('Toggle Something', self)
-        viewMenu.addAction(toggleAction)
+        # Help Menu
+        helpMenu = self.menuBar.addMenu('Help')
+        toggleAction = QAction('Tutorial', self)
+        helpMenu.addAction(toggleAction)
 
     def exitApp(self):
         # Placeholder function for exit action

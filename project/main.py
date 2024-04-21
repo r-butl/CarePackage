@@ -29,8 +29,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("CarePackage")
-        self.setGeometry(100, 50, 1500, 800)
-        self.current_signal = None
+        self.setGeometry(100, 50, 1500, 1000)
         
         ################################################## MVC defintions
 
@@ -45,6 +44,7 @@ class MainWindow(QMainWindow):
 
         ### Pipeline Construction 
         self.pipelineModel = PipelineModel()
+        self.on_click_new_signal()
 
         self.optionPanelViewer = OptionPanelViewer()
         self.pipelineViewer = PipelineViewer(model = self.pipelineModel)
@@ -52,9 +52,8 @@ class MainWindow(QMainWindow):
 
         self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
                                                         pipeline_viewer=self.pipelineViewer, 
-                                                        pipeline_model=self.pipelineModel,
-                                                        update_view_callback=self.update_signal_view)
-        
+                                                        pipeline_model=self.pipelineModel)
+                
         ################################################# Utilities Definition
 
         # Select Sample rate
@@ -123,23 +122,22 @@ class MainWindow(QMainWindow):
         topLevelLayout.addWidget(topBarContainer)
         topLevelLayout.addWidget(functionalViewWidget)
 
+        self.pipelineController.add_base_block()
 
 
     def on_click_new_signal(self):
-        self.current_signal = self.dataController.give_signal()
-        self.update_signal_view(self.current_signal)
+        self.pipelineModel.current_signal = self.dataController.give_signal()
+        self.update_signal_view(self.pipelineModel.current_signal)
 
     def update_signal_view(self, signal=None):
         if signal is None:
-            signal = self.current_signal
-
+            signal = self.pipelineModel.current_signal
         self.pipelineModel.process_signal(signal)
 
     def apply_sample_change(self):
         #self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline
         self.dataController = DataController(sampling_freq=self.sampling_options[self.sampling_options_index], path=self.path)    # Reload the dataabase
         self.on_click_new_signal()
-
 
 def main():
 

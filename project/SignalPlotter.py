@@ -7,15 +7,18 @@ from PyQt5.QtWidgets import (QVBoxLayout,
                              QSpacerItem, 
                              QHBoxLayout, 
                              QPushButton)
+from PyQt5.QtCore import QTimer
 import time
 
 class IndividualPlotView(QWidget):
-    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], model=None, id=None, controls=True):
+
+    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], model=None, id=None, controls=True, sample_rate=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)           
         super().__init__(parent)
 
         self.model = model
         self.block_id = id
+        self.sample_rate = sample_rate
 
         # Create the figure and canvas
         self.fig = Figure(figsize=(width, height), dpi=dpi)
@@ -26,6 +29,7 @@ class IndividualPlotView(QWidget):
         self.axes = self.fig.add_subplot(111)
         self.line = None    # Plot line
         self.indicies_lines = []    # lines of indicies
+        self.x_plot_limits = xlim
         self.initialize_plot(signal, label, indices, xlim)
 
         # Set a fixed height for the plot
@@ -43,22 +47,63 @@ class IndividualPlotView(QWidget):
         # Add widgets to main layout
         layout.addWidget(self.canvas)
         layout.addWidget(self.control_widget)
-
         self.setLayout(layout)
+
+        # Add Timer for real-time data simulation
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.simulate_real_time_data)
+        self.timer.start(int((1/self.sample_rate) * 1000))
+        self.current_index = 0
 
     def initialize_plot(self, signal, label, indices, xlim):
         """Initial the plot"""
+        self.signal = signal
         if signal:
             self.line, = self.axes.plot(range(len(signal)), signal, label=label)
             self.axes.set_xlim(xlim)
+            self.axes.set_ylim([min(signal), max(signal)])
             for index in indices:
                 line = self.axes.axvline(x=index, color='r', linestyle='-')
                 self.indicies_lines.append(line)    # Store each vertical line
             if label:
-                self.axes.set_title(label)
+                self.axes.set_ylabel(label)
 
+    def simulate_real_time_data(self):
+        if self.signal:
+            # check end of the signal
+            if self.current_index >= len(self.signal):
+                self.current_index = 0
+                self.line.set_data([],[])
+
+            # Increment the signal mask
+            self.current_index += 1
+            if self.current_index > len(self.signal):
+                self.current_index = len(self.signal)
+
+            x_data = range(self.current_index)
+            y_data = self.signal[:self.current_index]
+            self.line.set_data(x_data, y_data)
+            self.axes.relim()
+            self.axes.autoscale_view(scalex=False, scaley=True)
+
+            # Set the axes 
+            self.axes.set_xlim(self.x_plot_limits)
+            self.axes.set_ylim([min(self.signal), max(self.signal)])
+
+
+            self.fig.canvas.draw_idle()
+
+    def reset_draw(self, sample_rate=None):
+        if sample_rate != self.sample_rate and sample_rate != None:
+            self.sample_rate = sample_rate
+            self.timer.setInterval(int((1/self.sample_rate) * 1000))
+
+        self.current_index = 0
+            
     def update_signal(self, new_signal, new_indices=None):
         """Update the plot with the new signal"""
+        self.signal = new_signal
+
         if self.line is not None:
             self.line.set_ydata(new_signal)
             self.line.set_xdata(range(len(new_signal)))
@@ -149,6 +194,10 @@ class PipelineViewer(QWidget):
         # Ensure the scroll area expands fully within SignalPlotView
         self.scrollArea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
 
+    def reset_draw(self, sample_rate=None):
+        for plot in self.plotViews.values():
+            plot.reset_draw(sample_rate)
+
     def clear_layout(self, layout):
         while layout.count():
             item = layout.takeAt(0)   # take the first item in the layout
@@ -199,6 +248,7 @@ class PipelineViewer(QWidget):
         
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.plotLayout.addSpacerItem(spacer)
+        self.reset_draw()
 
     def clean_up(self):
 

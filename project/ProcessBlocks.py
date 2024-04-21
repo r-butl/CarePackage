@@ -6,7 +6,8 @@
 
 import CarePackage
 from abc import ABC, abstractmethod
-from PyQt5.QtWidgets import (QWidget,
+from PyQt5.QtWidgets import (
+                             QWidget,
                              QVBoxLayout,
                              QPushButton,
                              QSizePolicy,
@@ -37,7 +38,6 @@ class ProcessBlock(ABC):
 
     def process(self, signal=None):
         ''' Executes the process block'''
-        print(f"Process called on {self.info['name']}")
         if signal != None:
             self.signal_prev_stage = signal
 
@@ -56,9 +56,7 @@ class ProcessBlock(ABC):
 
             if self.next_filter:
                 self.next_filter.process(self.signal)
-        
-        return
-        
+                
     def set_info(self, option, value):
         ''' Sets the configurable parameters of the process block'''
         if option in self.info and type(value) == type(self.info[option]):
@@ -127,7 +125,7 @@ class ProcessBlock(ABC):
         """ Defines a popup window for the options panel"""
 
         dialog = QDialog()
-        dialog.setWindowTitle("Confguration Options")
+        dialog.setWindowTitle("Configuration Options")
 
         layout = QVBoxLayout(dialog)
 
