@@ -53,23 +53,8 @@ class MainWindow(QMainWindow):
         self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
                                                         pipeline_viewer=self.pipelineViewer, 
                                                         pipeline_model=self.pipelineModel)
-                
-        ################################################# Utilities Definition
-
-        # Select Sample rate
-        self.sampleSelect = QComboBox()
-        self.sampleSelect.addItems([ str(i) for i in self.sampling_options ])
-        self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
-
-        # Apply Sample rate changes
-        self.sampleChange = QPushButton("Apply Changes", self)
-        self.sampleChange.clicked.connect( self.apply_sample_change )
-
-        # New Signal Button
-        self.newSignalButton = QPushButton("New Signal", self)
-        self.newSignalButton.clicked.connect(self.on_click_new_signal)
-
-        ##################################################### 
+        
+        ##################################################### Central Layout
 
         centralWidget = QWidget(self)
         self.setCentralWidget(centralWidget)
@@ -85,34 +70,51 @@ class MainWindow(QMainWindow):
 
         rightPanelContainer = QWidget()
         rightPanel = QVBoxLayout(rightPanelContainer)
-
-        self.controlPanelGroup = QGroupBox("Control Panel")
-        controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
-
-        #####################################################  Layout
+          
         font = QFont()
         font.setBold(True)
         font.setPointSize(12)
 
-        # Left Panel
-        leftPanelLabel = QLabel("Process Block Options")
-        leftPanelLabel.setAlignment(Qt.AlignCenter)
-        leftPanelLabel.setFont(font)
-        leftPanel.addWidget(leftPanelLabel)
-        leftPanel.addWidget(self.optionPanelViewer)
+        ################################################# Utilities Definition
 
-        # Right Panel
-        rightPanelLabel = QLabel("Pipeline Viewer")
-        rightPanelLabel.setAlignment(Qt.AlignCenter)
-        rightPanelLabel.setFont(font)
-        rightPanel.addWidget(rightPanelLabel)
-        rightPanel.addWidget(self.pipelineViewer)
+        ############################# Right Panel
+
+        self.controlPanelGroup = QGroupBox("Control Panel")
+        controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
+
+        # Select Sample rate
+        self.sampleSelect = QComboBox()
+        self.sampleSelect.addItems([ str(i) for i in self.sampling_options ])
+        self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
+
+        # Apply Sample rate changes
+        self.sampleChange = QPushButton("Apply Changes", self)
+        self.sampleChange.clicked.connect( self.apply_sample_change )
+
+        # New Signal Button
+        self.newSignalButton = QPushButton("New Signal", self)
+        self.newSignalButton.clicked.connect(self.on_click_new_signal)
 
         controlPanelLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
         controlPanelLayout.addWidget(self.sampleSelect)
         controlPanelLayout.addWidget(self.sampleChange)
         controlPanelLayout.addWidget(self.newSignalButton)
+        
+        self.pipelineGroup = QGroupBox("Pipeline Viewer")
+        pipelineLayout = QVBoxLayout(self.pipelineGroup)
+        pipelineLayout.addWidget(self.pipelineViewer)
+
+        rightPanel.addWidget(self.pipelineGroup)
         rightPanel.addWidget(self.controlPanelGroup)
+
+        #########################   Left Panel
+
+        self.optionPanelGroup = QGroupBox("Process Block Options")
+        optionPanelLayout = QVBoxLayout(self.optionPanelGroup)
+
+        optionPanelLayout.addWidget(self.optionPanelViewer)
+        
+        leftPanel.addWidget(self.optionPanelGroup)
 
         # Functional Panel
         functionalViewLayout.addWidget(leftPanelContainer,1)

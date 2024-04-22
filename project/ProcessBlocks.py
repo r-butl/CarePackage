@@ -46,7 +46,8 @@ class ProcessBlock(ABC):
                 self.signal = self.function(self.signal_prev_stage)
 
             if self.info['peaks'] == True:
-                self.indicies = CarePackage.detect_peak(self.signal, 0.65)
+                self.indicies = CarePackage.detect_peak(self.signal, 75)
+                print(self.indicies)
             else:
                 self.indicies = []
 

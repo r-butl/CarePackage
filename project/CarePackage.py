@@ -126,7 +126,7 @@ def detect_peak(signal, threshold):
     # Set up the function
     function = ctypes.CDLL('./pan_tompkins.so') 
     function.detect_peak.argtypes = [   ctypes.POINTER(ctypes.c_float),
-                                        ctypes.c_float,
+                                        ctypes.c_int,
                                         ctypes.POINTER(ctypes.c_int),
                                         ctypes.c_int,
                                         ctypes.POINTER(ctypes.c_int)

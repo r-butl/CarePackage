@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "pan_tompkins.h"
+#include <stdbool.h>
 
 void convolution(float *input_signal, float *output_signal, float *kernel, int input_length, int kernel_length){
     
@@ -104,28 +105,57 @@ float findMaxValue(float arr[], int n) {
     return max;
 }
 
-void detect_peak(float *input_signal, float threshold, int *output_indices, int signal_length, int *num_peaks_found){
+// void detect_peak(float *input_signal, float threshold, int *output_indices, int signal_length, int *num_peaks_found){
+//     // Pass in a signal and the output is a list of indices that are the peaks of the waves in the signal
+
+//     int current_indice = 0;
+//     float max_value = findMaxValue(input_signal, signal_length) * threshold;
+
+//     for(int i = 4; i < signal_length - 4; i++){
+//         float left = input_signal[i-1];
+//         float current = input_signal[i];
+//         float right = input_signal[i+1];
+
+//         if( left < current && 
+//             right < current &&
+//             current > max_value){
+
+//             output_indices[current_indice++] = i;
+
+//             if(current_indice == 100) break;
+
+//         }
+//     }
+
+//     *num_peaks_found = current_indice;
+// }
+
+
+void detect_peak(float *input_signal, int window_size, int *output_indices, int signal_length, int *num_peaks_found){
     // Pass in a signal and the output is a list of indices that are the peaks of the waves in the signal
 
-    int current_indice = 0;
-    float max_value = findMaxValue(input_signal, signal_length) * threshold;
+    int current_index = 0;
+    int half_window = window_size / 2;
 
-    for(int i = 4; i < signal_length - 4; i++){
-        float left = input_signal[i-1];
+    for(int i = half_window; i < signal_length - half_window; i++){
         float current = input_signal[i];
-        float right = input_signal[i+1];
+        bool is_peak = true;
 
-        if( left < current && 
-            right < current &&
-            current > max_value){
+        // Check against the window around the current point
+        for (int j = -half_window; j <= half_window; j++) {
+            if (j != 0 && input_signal[i + j] >= current) {
+                is_peak = false;
+                break;
+            }
+        }
 
-            output_indices[current_indice++] = i;
+        if (is_peak) {
+            output_indices[current_index++] = i;
 
-            if(current_indice == 100) break;
-
+            // Stop adding peaks if we reach the maximum storage capacity
+            if (current_index == 100) break;
         }
     }
 
-    *num_peaks_found = current_indice;
+    *num_peaks_found = current_index;
 }
-

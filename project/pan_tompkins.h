@@ -9,6 +9,6 @@ void squaring(float *input_signal, float *output_signal, int signal_length);
 
 void moving_window_integration(float *input_signal, float *output_signal, int signal_length, int window_width);
 
-void detect_peak(float *input_signal, float threshold, int *output_indices, int signal_length, int *num_peaks_found);
+void detect_peak(float *input_signal, int window, int *output_indices, int signal_length, int *num_peaks_found);
 
 #endif
