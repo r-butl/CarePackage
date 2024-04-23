@@ -31,29 +31,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CarePackage")
         self.setGeometry(100, 50, 1500, 1000)
         
-        ################################################## MVC defintions
-
-        ###  Data Base 
-
-        self.sampling_options = [100, 500]
-        self.sampling_options_index = 0
-        self.path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/"
-
-        self.dataController = DataController(           sampling_freq=self.sampling_options[self.sampling_options_index], 
-                                                        path=self.path)
-
-        ### Pipeline Construction 
-        self.pipelineModel = PipelineModel()
-        self.on_click_new_signal()
-
-        self.optionPanelViewer = OptionPanelViewer()
-        self.pipelineViewer = PipelineViewer(model = self.pipelineModel)
-
-
-        self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
-                                                        pipeline_viewer=self.pipelineViewer, 
-                                                        pipeline_model=self.pipelineModel)
-        
         ##################################################### Central Layout
 
         centralWidget = QWidget(self)
@@ -75,10 +52,15 @@ class MainWindow(QMainWindow):
         font.setBold(True)
         font.setPointSize(12)
 
-        ################################################# Utilities Definition
+        ##################################################### Data Base 
 
-        ############################# Right Panel
+        self.sampling_options = [100, 500]
+        self.sampling_options_index = 0
+        self.path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/"
 
+        self.dataController = DataController(           sampling_freq=self.sampling_options[self.sampling_options_index], 
+                                                        path=self.path)
+        
         self.controlPanelGroup = QGroupBox("Control Panel")
         controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
 
@@ -99,21 +81,39 @@ class MainWindow(QMainWindow):
         controlPanelLayout.addWidget(self.sampleSelect)
         controlPanelLayout.addWidget(self.sampleChange)
         controlPanelLayout.addWidget(self.newSignalButton)
+
+        ################################################################ Pipeline Construction 
         
+        self.pipelineModel = PipelineModel()
+        self.on_click_new_signal()
+
+        self.optionPanelViewer = OptionPanelViewer()
+        self.pipelineViewer = PipelineViewer(           model = self.pipelineModel,
+                                                        sampling_freq=self.sampling_options[self.sampling_options_index])
+        
+        self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
+                                                        pipeline_viewer=self.pipelineViewer, 
+                                                        pipeline_model=self.pipelineModel)
+        
+
         self.pipelineGroup = QGroupBox("Pipeline Viewer")
         pipelineLayout = QVBoxLayout(self.pipelineGroup)
         pipelineLayout.addWidget(self.pipelineViewer)
 
+        ############################# Right Panel
+
         rightPanel.addWidget(self.pipelineGroup)
         rightPanel.addWidget(self.controlPanelGroup)
 
-        #########################   Left Panel
+        ############################# Option Panel Viewer
 
         self.optionPanelGroup = QGroupBox("Process Block Options")
         optionPanelLayout = QVBoxLayout(self.optionPanelGroup)
 
         optionPanelLayout.addWidget(self.optionPanelViewer)
         
+        #########################   Left Panel
+
         leftPanel.addWidget(self.optionPanelGroup)
 
         # Functional Panel
@@ -125,7 +125,6 @@ class MainWindow(QMainWindow):
         topLevelLayout.addWidget(functionalViewWidget)
 
         self.pipelineController.add_base_block()
-
 
     def on_click_new_signal(self):
         self.pipelineModel.current_signal = self.dataController.give_signal()

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "pan_tompkins.h"
+#include "ProcessBlockImplementations.h"
 #include <stdbool.h>
 
 void convolution(float *input_signal, float *output_signal, float *kernel, int input_length, int kernel_length){

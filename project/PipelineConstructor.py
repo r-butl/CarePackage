@@ -38,7 +38,7 @@ class PipelineModel:
                     curr.next_filter = newBlock
                     break
                 curr = curr.next_filter
-                
+               
         self.notify_observers()
 
     def print_pipeline(self):
@@ -161,11 +161,12 @@ class PipelineModel:
     def notify_observers(self):
         self.process_signal(self.current_signal)
         if self.observer:
-            self.observer.update()
+            self.observer.update_signal()
 
 #################################################################################
 
 class PipelineController:
+
     def __init__ (self, option_viewer=None, pipeline_viewer=None, pipeline_model=None):
         self.starting_point = None
 

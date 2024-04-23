@@ -1,2 +1,2 @@
-pan_tompkins.so: pan_tompkins.c
-	gcc -shared -o pan_tompkins.so pan_tompkins.c -fPIC
+ProcessBlockImplementations.so: ProcessBlockImplementations.c
+	gcc -shared -o ProcessBlockImplementations.so ProcessBlockImplementations.c -fPIC
