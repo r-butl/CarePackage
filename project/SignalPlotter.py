@@ -12,13 +12,13 @@ import time
 
 class IndividualPlotView(QWidget):
 
-    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], model=None, id=None, controls=True, sample_rate=100):
+    def __init__(self, parent, width=6, height=2, dpi=100, signal=None, label="", indices=[], xlim=[0, 1000], model=None, id=None, controls=True, sampling_freq=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)           
         super().__init__(parent)
 
         self.model = model
         self.block_id = id
-        self.sample_rate = sample_rate
+        self.sampling_freq = sampling_freq
         self.current_index = 0
 
         # Create the figure and canvas
@@ -93,7 +93,8 @@ class IndividualPlotView(QWidget):
 
     def update_signal(self, new_signal, new_indices=None):
         """Update the plot with the new signal"""
-        self.signal = new_signal
+        if new_signal != self.signal:
+            self.signal = new_signal
 
         if self.line is not None:
             self.line.set_ydata(new_signal)
@@ -145,7 +146,6 @@ class IndividualPlotView(QWidget):
             self.model.move_filter_down(self.block_id)
     
     def remove_filter(self):
-        print("remove triggered")
         if self.model:
             self.model.remove_by_id(self.block_id)
 
@@ -159,7 +159,7 @@ class PipelineViewer(QWidget):
         super().__init__(parent)
         self.model = model
         self.plotViews = {}     # block id to plot view mapping
-        self.sample_rate = sampling_freq
+        self.sampling_freq = sampling_freq
 
         self.init_UI()
         self.update()
@@ -171,7 +171,7 @@ class PipelineViewer(QWidget):
         if self.simulate_realtime_data:
             self.timer = QTimer(self)
             self.timer.timeout.connect(self.update_masks)
-            self.timer.start(int((1/self.sample_rate) * 1000))
+            self.timer.start(int((1/self.sampling_freq) * 1000))
             self.current_index = 0
 
     def init_UI(self):
@@ -247,7 +247,6 @@ class PipelineViewer(QWidget):
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.plotLayout.addSpacerItem(spacer)
 
-
     def update_masks(self):
         curr = self.model.pipeline_start
 
@@ -265,10 +264,10 @@ class PipelineViewer(QWidget):
         else:
             self.timer.start()
 
-    def update_samplerate(self, sample_rate=None):
-        if sample_rate != self.sample_rate and sample_rate != None:
-            self.sample_rate = sample_rate
-            self.timer.setInterval(int((1/self.sample_rate) * 1000))
+    def update_sampling_freq(self, sampling_freq=None):
+        if sampling_freq != self.sampling_freq and sampling_freq != None:
+            self.sampling_freq = sampling_freq
+            self.timer.setInterval(int((1/self.sampling_freq) * 1000))
 
         self.reset_masks()
 

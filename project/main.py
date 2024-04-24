@@ -85,7 +85,6 @@ class MainWindow(QMainWindow):
         ################################################################ Pipeline Construction 
         
         self.pipelineModel = PipelineModel()
-        self.on_click_new_signal()
 
         self.optionPanelViewer = OptionPanelViewer()
         self.pipelineViewer = PipelineViewer(           model = self.pipelineModel,
@@ -94,7 +93,10 @@ class MainWindow(QMainWindow):
         self.pipelineController = PipelineController(   option_viewer=self.optionPanelViewer,
                                                         pipeline_viewer=self.pipelineViewer, 
                                                         pipeline_model=self.pipelineModel)
-        
+        self.on_click_new_signal()
+        self.pipelineController.add_base_block()
+        self.pipelineController.update_latest_signal(self.pipelineModel.current_signal)
+        self.pipelineController.setup_UI()
 
         self.pipelineGroup = QGroupBox("Pipeline Viewer")
         pipelineLayout = QVBoxLayout(self.pipelineGroup)
@@ -124,20 +126,22 @@ class MainWindow(QMainWindow):
         topLevelLayout.addWidget(topBarContainer)
         topLevelLayout.addWidget(functionalViewWidget)
 
-        self.pipelineController.add_base_block()
 
     def on_click_new_signal(self):
+        print("on click new signal")
         self.pipelineModel.current_signal = self.dataController.give_signal()
         self.update_signal_view(self.pipelineModel.current_signal)
 
     def update_signal_view(self, signal=None):
+        print("update signal view")
         if signal is None:
             signal = self.pipelineModel.current_signal
-        self.pipelineModel.process_signal(signal)
+        self.pipelineController.process_signal(signal)
 
     def apply_sample_change(self):
-        #self.pipelineController.update_sampling_rate(self.sampling_options[self.sampling_options_index])  # Reconfigure the pipeline
+        print("apply sample change")
         self.dataController = DataController(sampling_freq=self.sampling_options[self.sampling_options_index], path=self.path)    # Reload the dataabase
+        self.pipelineController.update_sampling_freq(self.sampling_options[self.sampling_options_index])
         self.on_click_new_signal()
 
 def main():
@@ -145,7 +149,6 @@ def main():
     app = QApplication(sys.argv)
     mainWindow = MainWindow()  # Temporarily pass None for the controller
 
-    mainWindow.on_click_new_signal()
     mainWindow.show()
 
     sys.exit(app.exec_())

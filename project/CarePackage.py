@@ -4,27 +4,27 @@ def cast_to_ctypes(data_list, type):
     array = (type * len(data_list))(*data_list)
     return array
 
-def FIR(signal, ceoffs):
+def FIR(signal, coeffs):
 
-    def load_coeffs(file):
-        values = list()
-        with open(file, 'r') as f:        
-            for line in f:
-            # Convert each line to a float and append to the list
-                coef = float(line.strip())
-                values.append(coef)
+    # def load_coeffs(file):
+    #     values = list()
+    #     with open(file, 'r') as f:        
+    #         for line in f:
+    #         # Convert each line to a float and append to the list
+    #             coef = float(line.strip())
+    #             values.append(coef)
 
-        return values
+    #     return values
     
-    sampling_freq = 100
-    # Coeffients depend on the frequency rate. Load the correct frequency coefficients.
-    if sampling_freq == 500:
-        coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_500.csv")
-    else:
-        coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_100.csv")
+    # sampling_freq = 100
+    # # Coeffients depend on the frequency rate. Load the correct frequency coefficients.
+    # if sampling_freq == 500:
+    #     coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_500.csv")
+    # else:
+    #     coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_100.csv")
 
     # Set up the function
-    functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
+    functions = ctypes.CDLL('./ProcessBlockImplementations.so')  # Use 'example.dll' on Windows
     functions.convolution.argtypes = [  ctypes.POINTER(ctypes.c_float), 
                                         ctypes.POINTER(ctypes.c_float), 
                                         ctypes.POINTER(ctypes.c_float), 
@@ -47,7 +47,7 @@ def FPD(signal, sampling_freq):
     sampling_period = 1 / sampling_freq;
     
     # Set up the function
-    functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
+    functions = ctypes.CDLL('./ProcessBlockImplementations.so')  # Use 'example.dll' on Windows
     functions.FPD.argtypes = [  ctypes.POINTER(ctypes.c_float),
                                 ctypes.POINTER(ctypes.c_float), 
                                 ctypes.c_int,
@@ -66,7 +66,7 @@ def FPD(signal, sampling_freq):
 def pointwise_squaring(signal):
 
     # Set up the function
-    functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
+    functions = ctypes.CDLL('./ProcessBlockImplementations.so')  # Use 'example.dll' on Windows
     functions.squaring.argtypes = [ ctypes.POINTER(ctypes.c_float),
                                     ctypes.POINTER(ctypes.c_float), 
                                     ctypes.c_int]
@@ -84,7 +84,7 @@ def pointwise_squaring(signal):
 def moving_window_integration(signal, window_size):
     
     # Set up the function
-    functions = ctypes.CDLL('./pan_tompkins.so')  # Use 'example.dll' on Windows
+    functions = ctypes.CDLL('./ProcessBlockImplementations.so')  # Use 'example.dll' on Windows
     functions.moving_window_integration.argtypes = [    ctypes.POINTER(ctypes.c_float),
                                                         ctypes.POINTER(ctypes.c_float), 
                                                         ctypes.c_int,
@@ -105,7 +105,7 @@ def central_diff(signal, sampling_freq):
 
     sampling_period = 1 / sampling_freq;
     # Set up the function
-    functions = ctypes.CDLL('./pan_tompkins.so')  
+    functions = ctypes.CDLL('./ProcessBlockImplementations.so')  
     functions.central_diff.argtypes = [     ctypes.POINTER(ctypes.c_float),
                                             ctypes.POINTER(ctypes.c_float), 
                                             ctypes.c_int,
@@ -124,7 +124,7 @@ def central_diff(signal, sampling_freq):
 def detect_peak(signal, threshold):
 
     # Set up the function
-    function = ctypes.CDLL('./pan_tompkins.so') 
+    function = ctypes.CDLL('./ProcessBlockImplementations.so') 
     function.detect_peak.argtypes = [   ctypes.POINTER(ctypes.c_float),
                                         ctypes.c_int,
                                         ctypes.POINTER(ctypes.c_int),

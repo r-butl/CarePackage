@@ -1,11 +1,6 @@
 
 from PyQt5.QtWidgets import (   QWidget, 
                                 QVBoxLayout, 
-                                QLabel, 
-                                QHBoxLayout,
-                                QCheckBox,
-                                QSpinBox, 
-                                QPushButton,
                                 QSizePolicy,
                                 QScrollArea
                             )
@@ -20,11 +15,35 @@ class PipelineModel:
 
     def __init__(self):
         self.pipeline_start = None
+        self.pipeline_end = None
         self.current_signal = []
+
+    def print_pipeline(self):
+        curr = self.pipeline_start
+
+        while curr:
+            print(curr.info['uuid'])
+            curr = curr.next_filter
+
+    def set_pipeline_end(self):
+        """Sets the end of the pipeline to the last node in the graph"""
+        curr = self.pipeline_start
+
+        # Base Case
+        if curr.next_filter == None:
+            self.pipeline_end = curr
+
+        while curr:
+            if curr.next_filter == None:
+                self.pipeline_end = curr
+                return
+            else:
+                curr = curr.next_filter
 
     def add_process_block(self, process_block):
         """Adds a new process block to the pipeline"""
         newBlock = process_block
+        newBlock.parent = self
         newBlock.info['uuid'] = uuid.uuid4()    # Create a new uuid for the block
 
         # The block to the pipeline and set its next filter
@@ -37,16 +56,11 @@ class PipelineModel:
                 if curr.next_filter == None:
                     curr.next_filter = newBlock
                     break
+
                 curr = curr.next_filter
-               
+        
+        self.set_pipeline_end()
         self.notify_observers()
-
-    def print_pipeline(self):
-        curr = self.pipeline_start
-
-        while curr:
-            print(curr.info['uuid'])
-            curr = curr.next_filter
 
     def remove_by_id(self, id):
         ''' Remove an element by its ID'''
@@ -60,13 +74,15 @@ class PipelineModel:
                     self.pipeline_start = curr.next_filter
                 else:
                     prev.next_filter = curr.next_filter
-                
+
                 del curr
                 self.notify_observers()
-                return
+                break
             else:
                 prev = curr
                 curr = curr.next_filter
+
+        self.set_pipeline_end()
 
     def move_filter_up(self, id):
         """Move the Block up the pipeline"""
@@ -84,6 +100,7 @@ class PipelineModel:
             self.pipeline_start.next_filter = second.next_filter
             second.next_filter = self.pipeline_start
             self.pipeline_start = second
+            self.set_pipeline_end()
             self.notify_observers()
             return
 
@@ -99,6 +116,7 @@ class PipelineModel:
                 curr.next_filter = target.next_filter
                 target.next_filter = curr
                 prev.next_filter = target
+                self.set_pipeline_end()
                 self.notify_observers()
                 return
             
@@ -122,6 +140,7 @@ class PipelineModel:
             head.next_filter = next.next_filter
             next.next_filter = head
             self.pipeline_start = next
+            self.set_pipeline_end()
             self.notify_observers()
             return
 
@@ -135,6 +154,7 @@ class PipelineModel:
                 curr.next_filter = target.next_filter
                 target.next_filter = curr
                 prev.next_filter = target
+                self.set_pipeline_end()
                 self.notify_observers()
                 return
 
@@ -150,8 +170,10 @@ class PipelineModel:
 
             curr = curr.next_filter    
 
-    def process_signal(self, signal):
-        self.current_signal = signal
+    def process_signal(self, signal=None):
+        if signal != None:
+            self.current_signal = signal
+
         if self.pipeline_start:
             self.pipeline_start.process(self.current_signal)   
 
@@ -162,6 +184,13 @@ class PipelineModel:
         self.process_signal(self.current_signal)
         if self.observer:
             self.observer.update_signal()
+
+    def update_sampling_freq(self, sampling_freq):
+        curr = self.pipeline_start
+
+        while curr:
+            curr.update_info('sampling_freq', sampling_freq)
+            curr = curr.next_filter
 
 #################################################################################
 
@@ -181,7 +210,12 @@ class PipelineController:
         self.pipeline_model = pipeline_model
         self.option_viewer = option_viewer
         self.pipeline_viewer = pipeline_viewer
-        self.setup_UI()
+
+    def update_sampling_freq(self, sampling_freq):
+        for o in self.options:
+            o.update_info('sampling_freq', sampling_freq)
+
+        self.pipeline_model.update_sampling_freq(sampling_freq)
 
     def add_base_block(self):
         '''create a Buffer block and Add it to the pipeline'''
@@ -207,6 +241,19 @@ class PipelineController:
 
             # Add the element to the pipeline
             self.pipeline_model.add_process_block(newObject)
+            self.update_latest_signal(self.pipeline_model.pipeline_end.signal_prev_stage if self.pipeline_model.pipeline_end.signal_prev_stage else self.pipeline_model.pipeline_end.signal)
+
+    def update_latest_signal(self, signal=None):
+        """Updates each of the process block options with a signal when we access them in the options panel,
+        it displays the latest signal in the pipeline"""
+        for opt in self.options:
+            opt.signal = signal
+
+    def process_signal(self, signal):
+        """Sends a new signal to through the pipeline"""
+        self.pipeline_model.process_signal(signal)
+        if self.pipeline_model.pipeline_end:
+            self.update_latest_signal(self.pipeline_model.pipeline_end.signal_prev_stage if self.pipeline_model.pipeline_end.signal_prev_stage else self.pipeline_model.pipeline_end.signal)
             
 #################################################################################
 
@@ -237,7 +284,11 @@ class OptionPanelViewer(QWidget):
 
         self.scrollArea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
 
+    def clear_UI(self):
+        """Clears the UI"""
+
     def add_block_UI(self, block, return_copy_callback):
+        """Adds a process block to the options panel"""
         # Create a container for each block
         blockUI = block.create_option_ui(return_copy_callback)
         self.optionLayout.addWidget(blockUI)
