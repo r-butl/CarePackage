@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (QVBoxLayout,
                              QPushButton)
 from PyQt5.QtCore import QTimer
 import time
+import numpy as np
 
 class IndividualPlotView(QWidget):
 
@@ -93,12 +94,15 @@ class IndividualPlotView(QWidget):
 
     def update_signal(self, new_signal, new_indices=None):
         """Update the plot with the new signal"""
-        if new_signal != self.signal:
-            self.signal = new_signal
+        self.signal = new_signal
+
+        # Add padding to the signal if less than 1000
+        if len(self.signal) < self.x_plot_limits[1]:
+            self.signal = np.pad(self.signal, (0, self.x_plot_limits[1] - len(self.signal)), constant_values=(0,0)).tolist()
 
         if self.line is not None:
-            self.line.set_ydata(new_signal)
-            self.line.set_xdata(range(len(new_signal)))
+            self.line.set_ydata(self.signal)
+            self.line.set_xdata(range(len(self.signal)))
             self.axes.relim()
             self.axes.autoscale_view()
                                 
@@ -167,10 +171,10 @@ class PipelineViewer(QWidget):
         self.model.set_observer(self)   # Register as an observer
 
         # Add Timer for real-time data simulation
-        self.simulate_realtime_data = True
+        self.simulate_realtime_data = False
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_masks)
         if self.simulate_realtime_data:
-            self.timer = QTimer(self)
-            self.timer.timeout.connect(self.update_masks)
             self.timer.start(int((1/self.sampling_freq) * 1000))
             self.current_index = 0
 
@@ -273,10 +277,8 @@ class PipelineViewer(QWidget):
 
     def reset_masks(self):
         # reset the plot masks
-        self.simulate_realtime_data = False
-        self.update_masks()
-        self.simulate_realtime_data = True
-        self.update_masks()
+        for plot in self.plotViews.keys():
+            self.plotViews[plot].redraw_mask(self.simulate_realtime_data)
 
     def clean_up(self):
 
@@ -292,6 +294,14 @@ class PipelineViewer(QWidget):
                     del self.plotViews[k]
                     return
         
+    def toggle_masks(self):
+        if self.simulate_realtime_data == False:
+            self.simulate_realtime_data = True
+        else:
+            self.simulate_realtime_data = False
 
-
-
+        if self.simulate_realtime_data:
+            self.timer.start(int((1/self.sampling_freq) * 1000))
+            self.current_index = 0
+        
+        self.update_masks()

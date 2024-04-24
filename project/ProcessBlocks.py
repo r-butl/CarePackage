@@ -38,16 +38,17 @@ class ProcessBlock(ABC):
 
     def process(self, signal=None):
         ''' Executes the process block'''
-        print(self.info['uuid'])
+        #print(self.info['uuid'])
         if 'coefs' in self.info.keys():
-            print(self.info['coefs'])
+            #print(self.info['coefs'])
+            pass
         if signal != None:
             self.signal_prev_stage = signal
 
         if self.signal_prev_stage or self.signal:
-            if self.function:
-                self.signal = self.function(self.signal_prev_stage)
+            self.signal = self.function(self.signal_prev_stage)
 
+            #print(f"Signal: {np.average(signal)}")
             if self.info['peaks'] == True:
                 self.indicies = CarePackage.detect_peak(self.signal, 75)
             else:
@@ -79,7 +80,7 @@ class ProcessBlock(ABC):
         if option in self.info:
             if isinstance(self.info[option], type(value) ):
                 self.info[option] = value
-                print(f"block {self.info['uuid']} update {option} -> {self.info[option]}")
+                #print(f"block {self.info['uuid']} update {option} -> {self.info[option]}")
             else:
                 print("ERROR: Process Block - Mismatch value for option")
         else:

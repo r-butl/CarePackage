@@ -1,4 +1,5 @@
 import ctypes
+import numpy as np
 
 def cast_to_ctypes(data_list, type):
     array = (type * len(data_list))(*data_list)
@@ -24,6 +25,7 @@ def FIR(signal, coeffs):
     #     coeffs = load_coeffs("./FIR_coefs/FIR_coefs_bandpass_100.csv")
 
     # Set up the function
+
     functions = ctypes.CDLL('./ProcessBlockImplementations.so')  # Use 'example.dll' on Windows
     functions.convolution.argtypes = [  ctypes.POINTER(ctypes.c_float), 
                                         ctypes.POINTER(ctypes.c_float), 
@@ -34,12 +36,14 @@ def FIR(signal, coeffs):
     # run it
     output_signal = cast_to_ctypes([0.0] * (len(signal)), ctypes.c_float)
     functions.convolution(cast_to_ctypes(signal, ctypes.c_float),
-                                  output_signal,
-                                  cast_to_ctypes(coeffs, ctypes.c_float),  
-                                  (len(signal)),
-                                  len(coeffs))
+                                output_signal,
+                                cast_to_ctypes(coeffs, ctypes.c_float),  
+                                (len(signal)),
+                                len(coeffs))
     
     output_signal = [output_signal[i] for i in range(len(output_signal))]  
+
+    
     return output_signal
 
 def FPD(signal, sampling_freq):
@@ -143,4 +147,5 @@ def detect_peak(signal, threshold):
                             ctypes.byref(num_peaks))
     
     output_indices = [output_indices[i] for i in range(len(output_indices))]
+    output_indices = [i for i in output_indices if i > 0]
     return output_indices

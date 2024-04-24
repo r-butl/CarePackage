@@ -11,7 +11,7 @@ from PyQt5.QtGui import (
 from PyQt5.QtCore import Qt
 
 class TopMenuBar(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, exit_callback=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -27,6 +27,8 @@ class TopMenuBar(QWidget):
         self.menuBar = QMenuBar()
         self.layout.addWidget(self.menuBar)
 
+        self.exitApp = exit_callback
+
         # Set up the menus
         self.setupMenus()
 
@@ -37,13 +39,3 @@ class TopMenuBar(QWidget):
         exitAction.triggered.connect(self.exitApp)
         fileMenu.addAction(exitAction)
 
-        # Help Menu
-        helpMenu = self.menuBar.addMenu('Help')
-        toggleAction = QAction('Tutorial', self)
-        helpMenu.addAction(toggleAction)
-
-    def exitApp(self):
-        # Placeholder function for exit action
-        print("Exit triggered")
-
-# Note: Connect the exitApp function to actual functionality as needed.

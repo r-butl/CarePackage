@@ -25,19 +25,23 @@ from TopBar import *
 ###########################################################################################
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, exit_callback=None):
         super().__init__()
 
         self.setWindowTitle("CarePackage")
         self.setGeometry(100, 50, 1500, 1000)
         
+        self.sampling_options = [100, 500]
+        self.sampling_options_index = 0
+        self.path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/"
+
         ##################################################### Central Layout
 
         centralWidget = QWidget(self)
         self.setCentralWidget(centralWidget)
         topLevelLayout = QVBoxLayout(centralWidget)
         
-        topBarContainer = TopMenuBar()
+        topBarContainer = TopMenuBar(exit_callback=exit_callback)
 
         functionalViewWidget = QWidget()
         functionalViewLayout = QHBoxLayout(functionalViewWidget)
@@ -54,34 +58,9 @@ class MainWindow(QMainWindow):
 
         ##################################################### Data Base 
 
-        self.sampling_options = [100, 500]
-        self.sampling_options_index = 0
-        self.path="/home/lucas/Desktop/programming/classwork/Senior_project/project/data/"
-
         self.dataController = DataController(           sampling_freq=self.sampling_options[self.sampling_options_index], 
                                                         path=self.path)
         
-        self.controlPanelGroup = QGroupBox("Control Panel")
-        controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
-
-        # Select Sample rate
-        self.sampleSelect = QComboBox()
-        self.sampleSelect.addItems([ str(i) for i in self.sampling_options ])
-        self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
-
-        # Apply Sample rate changes
-        self.sampleChange = QPushButton("Apply Changes", self)
-        self.sampleChange.clicked.connect( self.apply_sample_change )
-
-        # New Signal Button
-        self.newSignalButton = QPushButton("New Signal", self)
-        self.newSignalButton.clicked.connect(self.on_click_new_signal)
-
-        controlPanelLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
-        controlPanelLayout.addWidget(self.sampleSelect)
-        controlPanelLayout.addWidget(self.sampleChange)
-        controlPanelLayout.addWidget(self.newSignalButton)
-
         ################################################################ Pipeline Construction 
         
         self.pipelineModel = PipelineModel()
@@ -102,6 +81,30 @@ class MainWindow(QMainWindow):
         pipelineLayout = QVBoxLayout(self.pipelineGroup)
         pipelineLayout.addWidget(self.pipelineViewer)
 
+        self.controlPanelGroup = QGroupBox("Control Panel")
+        controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
+
+        # Select Sample rate
+        self.sampleSelect = QComboBox()
+        self.sampleSelect.addItems([ str(i) for i in self.sampling_options ])
+        self.sampleSelect.currentIndexChanged.connect( lambda i: setattr(self, 'sampling_options_index', i) )
+
+        # Apply Sample rate changes
+        self.sampleChange = QPushButton("Apply Changes", self)
+        self.sampleChange.clicked.connect( self.apply_sample_change )
+
+        # New Signal Button
+        self.newSignalButton = QPushButton("New Signal", self)
+        self.newSignalButton.clicked.connect(self.on_click_new_signal)
+
+        self.toggleRealtimeButton = QPushButton("Toggle Real Time Simulator", self)
+        self.toggleRealtimeButton.clicked.connect(self.pipelineViewer.toggle_masks)
+
+        controlPanelLayout.addWidget(QLabel("Select a Sampling Rate (hz):"))
+        controlPanelLayout.addWidget(self.sampleSelect)
+        controlPanelLayout.addWidget(self.sampleChange)
+        controlPanelLayout.addWidget(self.newSignalButton)
+        controlPanelLayout.addWidget(self.toggleRealtimeButton)
         ############################# Right Panel
 
         rightPanel.addWidget(self.pipelineGroup)
@@ -126,7 +129,6 @@ class MainWindow(QMainWindow):
         topLevelLayout.addWidget(topBarContainer)
         topLevelLayout.addWidget(functionalViewWidget)
 
-
     def on_click_new_signal(self):
         print("on click new signal")
         self.pipelineModel.current_signal = self.dataController.give_signal()
@@ -147,7 +149,7 @@ class MainWindow(QMainWindow):
 def main():
 
     app = QApplication(sys.argv)
-    mainWindow = MainWindow()  # Temporarily pass None for the controller
+    mainWindow = MainWindow(exit_callback=app.quit)  # Temporarily pass None for the controller
 
     mainWindow.show()
 
