@@ -197,7 +197,6 @@ class PipelineModel:
 class PipelineController:
 
     def __init__ (self, option_viewer=None, pipeline_viewer=None, pipeline_model=None):
-        self.starting_point = None
 
         self.options = [
             PS(),
@@ -242,6 +241,7 @@ class PipelineController:
             # Add the element to the pipeline
             self.pipeline_model.add_process_block(newObject)
             self.update_latest_signal(self.pipeline_model.pipeline_end.signal_prev_stage if self.pipeline_model.pipeline_end.signal_prev_stage else self.pipeline_model.pipeline_end.signal)
+            self.pipeline_viewer.sync_masks()
 
     def update_latest_signal(self, signal=None):
         """Updates each of the process block options with a signal when we access them in the options panel,
@@ -261,7 +261,6 @@ class OptionPanelViewer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.container = QWidget(self)
-
         self.layout = QVBoxLayout(self.container)
         self.init_UI()
 
@@ -283,9 +282,6 @@ class OptionPanelViewer(QWidget):
         self.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
 
         self.scrollArea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
-
-    def clear_UI(self):
-        """Clears the UI"""
 
     def add_block_UI(self, block, return_copy_callback):
         """Adds a process block to the options panel"""

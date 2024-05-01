@@ -28,7 +28,7 @@ class ProcessBlock(ABC):
         self.function = None
         self.signal = []
         self.signal_prev_stage = []
-        self.indicies = []
+        self.indices = []
         self.initialize()
 
     @abstractmethod
@@ -50,23 +50,17 @@ class ProcessBlock(ABC):
 
             #print(f"Signal: {np.average(signal)}")
             if self.info['peaks'] == True:
-                self.indicies = CarePackage.detect_peak(self.signal, 75)
+                self.indices = CarePackage.detect_peak(self.signal, 75)
             else:
-                self.indicies = []
+                self.indices = []
 
             # Send the signal information to the plots that are observing the process block
             for observer in self.observers:
-                observer.update_signal(self.signal, self.indicies)
+                observer.update_signal(self.signal, self.indices)
 
             if self.next_filter:
                 self.next_filter.process(self.signal)
                 
-    def set_next_filter(self, filter):
-        self.next_filter = filter
-
-    def remove_next_filter(self):
-        self.next_filter=None
-
     def add_observer(self, observer):
         if observer not in self.observers:
             self.observers.append(observer)
@@ -134,6 +128,10 @@ class ProcessBlock(ABC):
         optionContainer.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
 
         optionLayout = QHBoxLayout(optionContainer)
+
+        # Correct the label
+        option = option.split('_')
+        option = ' '.join(word.capitalize() for word in option)
         optionLabel = QLabel(option)
         optionLayout.addWidget(optionLabel)
         optionLayout.addWidget(optionWidget)

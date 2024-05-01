@@ -18,7 +18,7 @@ class TopMenuBar(QWidget):
 
         # Logo
         self.label = QLabel()
-        logo = QPixmap('Logo.png')
+        logo = QPixmap('CarePackageLogo.png')
         logo = logo.scaled(300, 300, Qt.KeepAspectRatio)
         self.label.setPixmap(logo)
         self.layout.addWidget(self.label)
@@ -39,3 +39,7 @@ class TopMenuBar(QWidget):
         exitAction.triggered.connect(self.exitApp)
         fileMenu.addAction(exitAction)
 
+
+        fileMenu = self.menuBar.addMenu('Edit')
+        fileMenu = self.menuBar.addMenu('View')
+        fileMenu = self.menuBar.addMenu('Help')

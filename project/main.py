@@ -81,6 +81,7 @@ class MainWindow(QMainWindow):
         pipelineLayout = QVBoxLayout(self.pipelineGroup)
         pipelineLayout.addWidget(self.pipelineViewer)
 
+        ################################################### Data control panel
         self.controlPanelGroup = QGroupBox("Control Panel")
         controlPanelLayout = QVBoxLayout(self.controlPanelGroup)
 
@@ -119,6 +120,7 @@ class MainWindow(QMainWindow):
         
         #########################   Left Panel
 
+        leftPanel.addWidget(topBarContainer)
         leftPanel.addWidget(self.optionPanelGroup)
 
         # Functional Panel
@@ -126,7 +128,7 @@ class MainWindow(QMainWindow):
         functionalViewLayout.addWidget(rightPanelContainer, 4)
 
         # Top Level
-        topLevelLayout.addWidget(topBarContainer)
+        #topLevelLayout.addWidget(topBarContainer)
         topLevelLayout.addWidget(functionalViewWidget)
 
     def on_click_new_signal(self):

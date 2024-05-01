@@ -30,7 +30,8 @@ class IndividualPlotView(QWidget):
 
         self.axes = self.fig.add_subplot(111)
         self.line = None    # Plot line
-        self.indicies_lines = []    # lines of indicies
+        self.indices_lines = []    # lines of indices
+        self.indices = []
         self.x_plot_limits = xlim
         self.initialize_plot(signal, label, indices, xlim)
 
@@ -55,18 +56,21 @@ class IndividualPlotView(QWidget):
         """Initial the plot"""
         self.signal = signal
         if signal:
-            self.line, = self.axes.plot(range(len(signal)), signal, label=label)
+            self.line, = self.axes.plot(range(len(signal)), signal, label=label, zorder=2)
             self.axes.set_xlim(xlim)
             self.axes.set_ylim([min(signal), max(signal)])
             for index in indices:
-                line = self.axes.axvline(x=index, color='r', linestyle='-')
-                self.indicies_lines.append(line)    # Store each vertical line
+                line = self.axes.axvline(x=index, color='r', linestyle='-', zorder=1)
+                self.indices_lines.append(line)    # Store each vertical line
             if label:
                 self.axes.set_ylabel(label)
 
+    def sync_mask(self, index):
+        self.current_index = index
+        self.redraw_mask()
+
     def redraw_mask(self, mask=True):
         if self.signal:
-
             if mask == True:
                 # check end of the signal
                 if self.current_index >= self.x_plot_limits[1]:
@@ -90,6 +94,12 @@ class IndividualPlotView(QWidget):
             self.axes.set_xlim(self.x_plot_limits)
             self.axes.set_ylim([min(self.signal), max(self.signal)])
 
+            if len(self.indices_lines) > 0:
+                # Remove old indices
+                for x_pos, line in zip(self.indices, self.indices_lines):
+                    visable = True if x_pos <= self.current_index else False
+                    line.set_visible(visable)
+            
             self.fig.canvas.draw_idle()
 
     def update_signal(self, new_signal, new_indices=None):
@@ -103,19 +113,23 @@ class IndividualPlotView(QWidget):
         if self.line is not None:
             self.line.set_ydata(self.signal)
             self.line.set_xdata(range(len(self.signal)))
+
+            # Rescale the axes
+            self.axes.set_ylim([min(self.signal), max(self.signal)])
             self.axes.relim()
-            self.axes.autoscale_view()
-                                
+            self.axes.autoscale_view(scalex=True, scaley=True)
+      
         if new_indices is not None:
-            # Remove old indicies
-            for line in self.indicies_lines:
+            self.indices = new_indices      # Stores the x locations of each of the lines
+            # Remove old indices
+            for line in self.indices_lines:
                 line.remove()
-            self.indicies_lines.clear()
+            self.indices_lines.clear()
 
             # Add new indices
             for index in new_indices:
-                line = self.axes.axvline(x=index, color='r', linestyle='-')
-                self.indicies_lines.append(line)
+                line = self.axes.axvline(x=index, color='r', linestyle='-', zorder=1)
+                self.indices_lines.append(line)
 
         self.fig.canvas.draw_idle()     # redraw the plot
 
@@ -176,7 +190,6 @@ class PipelineViewer(QWidget):
         self.timer.timeout.connect(self.update_masks)
         if self.simulate_realtime_data:
             self.timer.start(int((1/self.sampling_freq) * 1000))
-            self.current_index = 0
 
     def init_UI(self):
         self.scrollArea = QScrollArea(self)
@@ -233,7 +246,7 @@ class PipelineViewer(QWidget):
                 plotView = IndividualPlotView(parent=self.plotContainerWidget,
                                               signal=curr.signal,
                                               label=curr.info['name'],
-                                              indices=curr.indicies,
+                                              indices=curr.indices,
                                               xlim=[0, 1000],
                                               model=self.model,
                                               id=curr.info['uuid'],
@@ -251,6 +264,26 @@ class PipelineViewer(QWidget):
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.plotLayout.addSpacerItem(spacer)
 
+    def update_sampling_freq(self, sampling_freq=None):
+        if sampling_freq != self.sampling_freq and sampling_freq != None:
+            self.sampling_freq = sampling_freq
+            self.timer.setInterval(int((1/self.sampling_freq) * 1000))
+
+        self.reset_masks()
+
+    def clean_up(self):
+        uuids = []
+        curr = self.model.pipeline_start
+        if curr:
+            while curr:
+                uuids.append(curr.info['uuid'])
+                curr = curr.next_filter
+
+            for k in self.plotViews.keys():
+                if k not in uuids:
+                    del self.plotViews[k]
+                    return
+        
     def update_masks(self):
         curr = self.model.pipeline_start
 
@@ -268,32 +301,11 @@ class PipelineViewer(QWidget):
         else:
             self.timer.start()
 
-    def update_sampling_freq(self, sampling_freq=None):
-        if sampling_freq != self.sampling_freq and sampling_freq != None:
-            self.sampling_freq = sampling_freq
-            self.timer.setInterval(int((1/self.sampling_freq) * 1000))
-
-        self.reset_masks()
-
     def reset_masks(self):
         # reset the plot masks
         for plot in self.plotViews.keys():
             self.plotViews[plot].redraw_mask(self.simulate_realtime_data)
 
-    def clean_up(self):
-
-        uuids = []
-        curr = self.model.pipeline_start
-        if curr:
-            while curr:
-                uuids.append(curr.info['uuid'])
-                curr = curr.next_filter
-
-            for k in self.plotViews.keys():
-                if k not in uuids:
-                    del self.plotViews[k]
-                    return
-        
     def toggle_masks(self):
         if self.simulate_realtime_data == False:
             self.simulate_realtime_data = True
@@ -302,6 +314,15 @@ class PipelineViewer(QWidget):
 
         if self.simulate_realtime_data:
             self.timer.start(int((1/self.sampling_freq) * 1000))
-            self.current_index = 0
         
+        self.update_masks()
+
+    def sync_masks(self):
+        plotViews = self.plotViews.values()
+        index = [p.current_index for p in plotViews]
+        index = max(index)
+
+        for p in plotViews:
+            p.sync_mask(index)
+
         self.update_masks()

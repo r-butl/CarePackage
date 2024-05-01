@@ -50,11 +50,8 @@ class TunerModule(QWidget):
             #'Bandstop'
         ]
 
-
         print("Loading filter options")
         self.info = filter_options
-
-        print(self.info)
         
         filterTypeWidget = QWidget()
         filterTypeLayout = QHBoxLayout(filterTypeWidget)
@@ -68,7 +65,6 @@ class TunerModule(QWidget):
         filterTypeLayout.addWidget(label)
         filterTypeLayout.addWidget(modeBox)
         layout.addWidget(filterTypeWidget)
-
 
         self.coeffs = []
 
@@ -102,7 +98,9 @@ class TunerModule(QWidget):
                 new_widget.setValue(self.info[key])
                 new_widget.valueChanged.connect(lambda value, opt=key: self.update_settings(opt, value))
             
-            label = QLabel(key)
+            lab = key.split('_')
+            lab = " ".join(word.capitalize() for word in lab)
+            label = QLabel(lab)
 
             optionLayout.addWidget(label)
             optionLayout.addWidget(new_widget)
@@ -216,7 +214,7 @@ class TunerModule(QWidget):
         
         for key in self.info.keys():
             self.update_info(key, self.info[key])
- 
+
 
     def update_plots(self):
         """Updates the plots with new information"""
@@ -236,7 +234,8 @@ class TunerModule(QWidget):
         self.axes2.plot([i for i in range(len(self.signal))], [self.signal[int(len(self.coeffs)/sampling_freq) + i] for i in range(len(self.signal))], label='Signal', color='lightblue')
         self.axes2.plot([i for i in range(len(convolved))], convolved, label='Convolved', color='orange')
         self.axes2.set_xlim([0, len(self.signal)])
-        self.axes2.legend()
+        self.axes2.set_ylabel("Signal Example")
+        
 
         # Frequency response plot
         self.axes3.clear()
@@ -245,7 +244,7 @@ class TunerModule(QWidget):
         self.axes3.plot(freqs, np.abs(h))
         self.axes3.axvline(x = self.info['lower_corner'], color='r')
         self.axes3.axvline(x = self.info['higher_corner'], color='g')
-        self.axes3.set_xlabel('Frequency (Hz)')
+        self.axes3.set_ylabel('Freq. Response (Hz)')
         self.axes3.set_xlim([0, freqs[-1]])
         self.canvas.draw()
 
